@@ -32,3 +32,7 @@ Compared all 305 original tracked and untracked source files with a saved SHA-25
 The previous readiness report remains historical evidence for its recorded source and local environments. A successful local build or CI run does not verify the future Vercel deployment.
 
 The user is being guided through the dashboard one step at a time. Final publication, costs, operational ownership, browser-local data loss and the PostHog project configuration require their own recorded decisions or verification.
+
+## GitHub Actions activation
+
+The user enabled Actions for the fork on 2026-11-22. The repository's Actions page showed `Actions Enabled.` and no workflow runs yet. The audited application changes and Vercel settings were already present on `main` in commit `a13304370c6a3d7ca23a3b10d358a97789188542`; GitHub had suppressed that push's workflow because Actions was disabled for the fork. This documentation-only follow-up starts the existing push-to-main workflow after activation. Browser test results remain pending until that run completes.
