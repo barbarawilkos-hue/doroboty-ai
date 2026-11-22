@@ -6,20 +6,12 @@ export function AnalyticsPageviews() {
   const { pathname } = useLocation();
   useLayoutEffect(() => {
     let active = true;
-    let stopRecording: (() => void) | undefined;
     void analyticsClient().then((posthog) => {
-      if (!active || !posthog) return;
-      if (isPublicAnalyticsRoute(pathname)) {
-        posthog.startSessionRecording();
-        stopRecording = () => posthog.stopSessionRecording();
-        posthog.capture("$pageview");
-      } else {
-        posthog.stopSessionRecording();
-      }
+      if (!active || !posthog || !isPublicAnalyticsRoute(pathname)) return;
+      posthog.capture("$pageview");
     });
     return () => {
       active = false;
-      stopRecording?.();
     };
   }, [pathname]);
   return null;

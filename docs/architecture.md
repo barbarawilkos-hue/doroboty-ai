@@ -36,9 +36,11 @@ duplicate StrictMode captures and stale captures after an asynchronous load. Aut
 is restricted to button/link clicks. Before-send allowlisting keeps only basic SDK metadata,
 normalized public routes, structural element positions and fixed public action names. DOM
 text/attributes, search queries, record identifiers and person properties are excluded.
-A synchronous private DOM marker blocks sensitive route subtrees; layout-effect cleanup
-pauses recording during navigation and private routes reject all analytics payloads.
-Session replay uses text/input/attribute/URL masking and blocks forms, images and documents.
-Console, network, header/body and canvas capture stay disabled in source and project settings.
+A synchronous private DOM marker excludes sensitive route subtrees from Autocapture, and
+private routes reject all analytics payloads. Session recording is disabled in SDK config,
+external extension scripts are blocked and no application code starts the recorder.
+Before-send accepts only pageviews/clicks and rejects snapshot events even on public routes.
+Defensive replay masking configuration remains dormant. Console, network, header/body and
+canvas capture stay disabled in source and project settings.
 EU ingestion, memory-only anonymous IDs and disabled person profiles keep analytics separate
 from the browser-local scenario and local diagnostic reports. A missing or blocked SDK does not prevent rendering.

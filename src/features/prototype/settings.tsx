@@ -121,12 +121,11 @@ export function PrivacyPage() {
           zawiera cały lokalny scenariusz, w tym notatki.
         </p>
         <p>
-          Wersja z podłączonym PostHogiem zbiera odsłony, kliknięcia i maskowane nagrania
-          publicznych widoków w regionie UE. Panele użytkownika, wybór osoby, formularze aplikacji i
-          inne prywatne widoki są pomijane. Formularze, zdjęcia i dokumenty są zasłonięte, a tekst
-          oraz wpisywane wartości maskowane. Logi konsoli i treści żądań sieciowych nie są
-          nagrywane. Losowy identyfikator analityczny pozostaje tylko w pamięci karty do jej
-          odświeżenia lub zamknięcia.
+          Wersja z podłączonym PostHogiem zbiera wyłącznie odsłony i kliknięcia publicznych widoków
+          w regionie UE. Panele użytkownika, wybór osoby, formularze aplikacji i inne prywatne
+          widoki są pomijane. Treści formularzy, teksty, adresy z parametrami i dane osób nie są
+          wysyłane. Nagrywanie sesji jest wyłączone. Losowy identyfikator analityczny pozostaje
+          tylko w pamięci karty do jej odświeżenia lub zamknięcia.
         </p>
         <p>
           Możesz usunąć zmiany przyciskiem „Resetuj scenariusz” w ustawieniach lub wyczyścić dane
