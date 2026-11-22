@@ -80,6 +80,7 @@ test("private and unknown routes drop clicks, pageviews and buffered replay payl
   for (const hash of [
     "#/app",
     "#/app/profil",
+    "#/app/podglad-macierzy",
     "#/app/kandydaci/private-id",
     "#/auth/sign-in",
     "#/aplikuj/private-job",
@@ -157,7 +158,7 @@ test("replay DOM attributes retain layout but exclude private labels, links and 
   expect(maskReplayAttribute("_cssText", "private")).toBe("");
 });
 
-test("masked replay data survives before-send while unrelated properties do not", () => {
+test("recording payloads are rejected even on public routes", () => {
   const payload = [{ type: 2, data: { masked: true } }];
   const result = sanitizeAnalyticsEvent(
     {
@@ -172,9 +173,7 @@ test("masked replay data survives before-send while unrelated properties do not"
     },
     "https://example.com/#/oferty",
   );
-  expect(result?.properties.$snapshot_data).toBe(payload);
-  expect(result?.properties.$session_id).toBe("random-session");
-  expect(result?.properties.private).toBeUndefined();
+  expect(result).toBeNull();
 });
 
 test("Autocapture keeps only predefined public action names", () => {

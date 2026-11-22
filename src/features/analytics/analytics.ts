@@ -61,7 +61,7 @@ export function analyticsUrl(href: string): string {
 
 // Rebuild the payload from a small allowlist, even if SDK defaults change later.
 export function sanitizeAnalyticsEvent(event: CaptureResult, href: string): CaptureResult | null {
-  if (!["$pageview", "$autocapture", "$snapshot"].includes(event.event)) return null;
+  if (!["$pageview", "$autocapture"].includes(event.event)) return null;
   const url = new URL(href);
   if (!isPublicAnalyticsRoute(url.hash)) return null;
   const route = analyticsRoute(url.hash);
@@ -85,12 +85,6 @@ export function sanitizeAnalyticsEvent(event: CaptureResult, href: string): Capt
     "$viewport_width",
   ]) {
     if (event.properties[key] !== undefined) properties[key] = event.properties[key];
-  }
-  if (event.event === "$snapshot") {
-    // rrweb masks/blocks content before compression; retain its already-masked payload.
-    for (const key of ["$snapshot_data", "$snapshot_bytes", "$snapshot_host"]) {
-      if (event.properties[key] !== undefined) properties[key] = event.properties[key];
-    }
   }
   Object.assign(properties, {
     $current_url: `${url.origin}/#${route}`,
@@ -135,6 +129,8 @@ export const analyticsOptions: Partial<PostHogConfig> = {
   capture_performance: false,
   rageclick: false,
   disable_session_recording: true,
+  disable_external_dependency_loading: true,
+  // Defensive privacy settings; the recorder is never started by this application.
   session_recording: {
     blockSelector: privateElements,
     maskAllInputs: true,
