@@ -7,6 +7,7 @@ import {
   saveState,
   serializeState,
   STORAGE_KEY,
+  StorageConflictError,
 } from "./storage";
 function memory(raw: string | null = null) {
   const values = new Map(raw === null ? [] : [[STORAGE_KEY, raw]]);
@@ -18,6 +19,25 @@ function memory(raw: string | null = null) {
   };
 }
 describe("browser persistence and recovery", () => {
+  it("rejects a stale tab without overwriting the other tab's newer scenario", () => {
+    const storage = memory();
+    const tabA = readState(storage);
+    const tabB = readState(storage);
+    const nextA = structuredClone(tabA.state);
+    nextA.people[0].headline = "Newer saved profile";
+    const saved = saveState(storage, nextA, tabA.raw);
+    const nextB = structuredClone(tabB.state);
+    nextB.people[0].headline = "Stale replacement";
+    expect(() => saveState(storage, nextB, tabB.raw)).toThrow(StorageConflictError);
+    expect(storage.getItem(STORAGE_KEY)).toBe(saved);
+    expect(readState(storage).state.people[0].headline).toBe("Newer saved profile");
+  });
+  it("protects a save against reset or replacement after the snapshot was removed", () => {
+    const original = serializeState(initialState());
+    const storage = memory();
+    expect(() => saveState(storage, initialState(), original)).toThrow(StorageConflictError);
+    expect(storage.getItem(STORAGE_KEY)).toBeNull();
+  });
   it("round-trips a complete valid scenario", () => {
     const storage = memory();
     const s = initialState();

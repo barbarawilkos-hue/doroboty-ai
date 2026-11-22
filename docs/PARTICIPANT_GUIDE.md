@@ -23,7 +23,7 @@ Karolina and Tomasz see their respective companies in the interface; this is rol
 
 ## Save, share and recover
 
-Changes survive reload in this browser. Settings can export a JSON file, import a scenario or reset to fixtures. Import/reset asks before replacing state. If a save is incompatible, download the original before resetting. Storage failure is shown explicitly; export before closing the tab. Use one editing tab at a time.
+Changes survive reload in this browser. Settings can export a JSON file, import a scenario or reset to fixtures. Import/reset asks before replacing state. If a save is incompatible, download the original before resetting. Storage failure is shown explicitly; export before closing the tab. A stale tab cannot overwrite a newer save. Preserve its recovery copy before explicitly loading the latest scenario. If safe cross-tab locking is unavailable, the warning explains memory-only operation; export before closing.
 
 A URL shares the interface, not your local changes. To transfer a scenario, share the exported file and import it in the other browser. Exports include all personas, applications and notes; never enter real personal data.
 
@@ -34,3 +34,7 @@ Run npm run build. Serve dist/ through any static HTTP host. No provider account
 ## Verification
 
 Run ./scripts/verify or npm run check. Browser tests require provisioned Playwright Chromium; a missing test browser does not prevent npm run dev. Do not let an agent install system dependencies automatically.
+
+## Sharing a public demo
+
+The homepage and every form identify this as a synthetic demo. Help at /#/pomoc explains local state, recovery copies and safe technical reports. Follow [RELEASE.md](RELEASE.md) to prepare a versioned static archive, test a hosted address and rehearse rollback. A release archive does not publish itself.

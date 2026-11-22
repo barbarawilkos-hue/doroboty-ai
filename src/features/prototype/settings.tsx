@@ -4,19 +4,11 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { usePrototype } from "./store";
 import { serializeState, MAX_IMPORT_BYTES } from "./storage";
 import { PageTitle } from "./shell";
-
-export function downloadText(name: string, text: string, type = "application/json") {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+import { downloadText } from "./download";
+export { downloadText } from "./download";
 export function SettingsPage() {
-  const { state, reset, importState, original } = usePrototype();
+  const { exportState, reset, importState, original } = usePrototype();
+  const [processing, setProcessing] = useState(false);
   const [pending, setPending] = useState<"reset" | "import" | null>(null);
   const [raw, setRaw] = useState("");
   const [error, setError] = useState("");
@@ -37,13 +29,14 @@ export function SettingsPage() {
       setError("Nie udało się odczytać pliku.");
     }
   }
-  function confirm() {
+  async function confirm() {
+    setProcessing(true);
     if (pending === "reset") {
-      reset();
-      setMessage("Przywrócono scenariusz początkowy.");
-    } else if (importState(raw)) {
+      if (await reset()) setMessage("Przywrócono scenariusz początkowy.");
+    } else if (await importState(raw)) {
       setMessage("Dane zostały zaimportowane.");
     }
+    setProcessing(false);
     setPending(null);
   }
   return (
@@ -58,7 +51,7 @@ export function SettingsPage() {
         <div className="flex flex-wrap gap-3">
           <Button
             variant="outline"
-            onClick={() => downloadText("doroboty-scenariusz.json", serializeState(state))}
+            onClick={() => downloadText("doroboty-scenariusz.json", serializeState(exportState))}
           >
             Eksportuj dane
           </Button>
@@ -108,7 +101,7 @@ export function SettingsPage() {
         title={pending === "reset" ? "Zresetować scenariusz?" : "Zastąpić dane scenariusza?"}
         description="Ta operacja zastąpi lokalne zmiany. Możesz najpierw wyeksportować dane."
         label={pending === "reset" ? "Resetuj" : "Importuj"}
-        pending={false}
+        pending={processing}
         onConfirm={confirm}
       />
     </>

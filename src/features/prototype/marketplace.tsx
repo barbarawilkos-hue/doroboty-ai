@@ -444,7 +444,7 @@ export function JobPage() {
                   Wybierz osobę i aplikuj
                 </Link>
               ) : (
-                <p>Aplikacje są dostępne z profilu kandydata.</p>
+                <p>Aplikacje są dostępne z profilu osoby szukającej pracy.</p>
               )}
               <p>Prototyp: aplikacja zostaje w tym przeglądarkowym scenariuszu.</p>
             </div>
@@ -522,21 +522,23 @@ export function CompanyPage() {
             {company.description}
           </p>
         </div>
-        <dl className="h-fit rounded-xl bg-muted/35 p-6 text-sm">
-          <div className="flex gap-2">
-            <MapPin className="size-5" />
+        <section aria-label="Informacje o firmie" className="prototype-panel h-fit text-sm">
+          <dl>
             <div>
-              <dt className="font-medium">Lokalizacja</dt>
-              <dd className="mt-1 text-muted-foreground">{company.location}</dd>
+              <dt className="flex items-center gap-2 font-medium">
+                <MapPin aria-hidden="true" className="size-5" />
+                Lokalizacja
+              </dt>
+              <dd className="mt-1 ml-7 text-muted-foreground">{company.location}</dd>
             </div>
-          </div>
-          <div className="mt-5 flex gap-2">
-            <Users className="size-5" />
-            <div>
-              <dt className="font-medium">Wielkość</dt>
-              <dd className="mt-1 text-muted-foreground">{company.sizeLabel}</dd>
+            <div className="mt-5">
+              <dt className="flex items-center gap-2 font-medium">
+                <Users aria-hidden="true" className="size-5" />
+                Wielkość
+              </dt>
+              <dd className="mt-1 ml-7 text-muted-foreground">{company.sizeLabel}</dd>
             </div>
-          </div>
+          </dl>
           {/^https?:\/\//i.test(company.websiteUrl) && (
             <a
               className="mt-6 inline-flex items-center gap-2 font-medium text-[var(--gui-link)] hover:underline"
@@ -547,7 +549,7 @@ export function CompanyPage() {
               Strona firmy <ArrowUpRight className="size-4" />
             </a>
           )}
-        </dl>
+        </section>
       </div>
       <section className="py-12">
         <h2 className="text-2xl font-semibold">Otwarte role</h2>

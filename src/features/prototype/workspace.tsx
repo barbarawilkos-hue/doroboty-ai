@@ -16,6 +16,13 @@ import { CvAttachment } from "./cv-attachment";
 import { MatchScore } from "./match-score";
 import { RecruitingApplication } from "./recruiting-application";
 import { CandidateApplication } from "./candidate-application";
+import { ContributionEditor } from "./contribution-editor";
+import {
+  emptyContributionProject,
+  projectAnswer,
+  projectsSchema,
+  toSimpleProject,
+} from "./contribution-matrix";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -49,8 +56,8 @@ export function PersonPicker() {
             <p className="my-4 text-muted-foreground">{person.headline}</p>
             <Button
               variant="outline"
-              onClick={() => {
-                run({ type: "select_person", id: person.id });
+              onClick={async () => {
+                if (!(await run({ type: "select_person", id: person.id }))) return;
                 navigate(
                   person.role === "candidate"
                     ? (safeNext ?? "/app")
@@ -83,7 +90,11 @@ export function RequireRole({
       <Empty>
         <p className="mb-4">
           Ten widok jest dostępny dla{" "}
-          {role === "candidate" ? "kandydata" : role === "employer" ? "pracodawcy" : "prowadzącego"}
+          {role === "candidate"
+            ? "osoby aplikującej"
+            : role === "employer"
+              ? "pracodawcy"
+              : "osoby prowadzącej"}
           .
         </p>
         <Link className={buttonVariants({ variant: "outline" })} to="/auth/sign-in">
@@ -127,7 +138,7 @@ export function WorkspaceHome() {
       </div>
       <div className="mt-8 flex flex-wrap gap-3">
         <Link className={buttonVariants()} to={candidate ? "/oferty" : "/app/kandydaci"}>
-          {candidate ? "Przeglądaj oferty" : "Przejrzyj kandydatów"}
+          {candidate ? "Przeglądaj oferty" : "Przejrzyj zgłoszenia"}
         </Link>
         <Link
           className={buttonVariants({ variant: "outline" })}
@@ -143,11 +154,11 @@ export function ProfilePage({ preview = false }: { preview?: boolean }) {
   const { state, run } = usePrototype();
   const person = currentPerson(state)!;
   const [message, setMessage] = useState("");
-  function save(e: FormEvent<HTMLFormElement>) {
+  async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     if (
-      run({
+      await run({
         type: "profile",
         value: {
           name: String(data.get("name")),
@@ -239,6 +250,11 @@ export function ApplyPage() {
   const notes = draft?.notes ?? "";
   const generated = draft?.generated ?? "";
   const [answer, setAnswer] = useState(draft?.answer ?? "");
+  const [matrixMode, setMatrixMode] = useState(!(draft && !draft.projects && draft.answer.trim()));
+  const [projects, setProjects] = useState(
+    draft?.projects?.map(toSimpleProject) ?? [emptyContributionProject()],
+  );
+  const matrixValidation = matrixMode ? projectsSchema.safeParse(projects) : null;
   const [consent, setConsent] = useState(false);
   const [message, setMessage] = useState("");
   const [attempted, setAttempted] = useState(false);
@@ -260,7 +276,7 @@ export function ApplyPage() {
   const existing = state.applications.find(
     (x) => x.jobId === job.id && x.candidateId === person.id,
   );
-  if (existing && !submitted)
+  if (existing && !submitted && !submittedOnce.current)
     return (
       <section className="prototype-section">
         <Notice>Aplikacja na tę ofertę została już wysłana.</Notice>
@@ -269,11 +285,17 @@ export function ApplyPage() {
         </Link>
       </section>
     );
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     if (submittedOnce.current) return;
     setAttempted(true);
-    if (answerLength < MIN_APPLICATION_ANSWER_LENGTH) {
+    if (matrixMode && !matrixValidation?.success) {
+      window.requestAnimationFrame(() =>
+        document.querySelector<HTMLElement>('.contribution-editor [aria-invalid="true"]')?.focus(),
+      );
+      return;
+    }
+    if (!matrixMode && answerLength < MIN_APPLICATION_ANSWER_LENGTH) {
       answerInput.current?.focus();
       return;
     }
@@ -281,22 +303,34 @@ export function ApplyPage() {
       document.getElementById("application-consent")?.focus();
       return;
     }
-    if (run({ type: "submit", jobId: job!.id, notes, generated, answer, consent })) {
-      submittedOnce.current = true;
+    submittedOnce.current = true;
+    if (
+      await run({
+        type: "submit",
+        jobId: job!.id,
+        notes,
+        generated,
+        answer: matrixMode ? projectAnswer(projects) : answer,
+        projects: matrixMode ? projects : undefined,
+        consent,
+      })
+    ) {
       setSubmitted(true);
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const rect = sendButton.current?.getBoundingClientRect();
         if (rect)
           setConfettiOrigin({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
       }
-    }
+    } else submittedOnce.current = false;
   }
   return (
     <section className="pp-container application-page">
       <BackLink to={`/oferty/${job.slug}`}>Wróć do oferty</BackLink>
       <header className="application-header">
         <h1>Aplikuj na ofertę</h1>
-        <p>Sprawdź ofertę i opowiedz, dlaczego pasujesz do tej roli.</p>
+        <p>
+          Sprawdź ofertę, opisz projekt i wypisz, za co konkretnie odpowiadasz w jego realizacji.
+        </p>
       </header>
       <div className="application-layout">
         <ApplicationOfferPreview job={job} />
@@ -326,31 +360,67 @@ export function ApplyPage() {
             className="application-form-section application-answer"
             aria-label="Odpowiedź do aplikacji"
           >
-            <Field label="Dlaczego pasujesz do tej roli?">
-              <Textarea
-                disabled={submitted}
-                ref={answerInput}
-                required
-                minLength={MIN_APPLICATION_ANSWER_LENGTH}
-                maxLength={12000}
-                aria-invalid={answerInvalid || undefined}
-                aria-describedby="application-answer-help"
-                value={answer}
-                onChange={(e) => {
-                  setAnswer(e.target.value);
-                  setConsent(false);
-                }}
-              />
-            </Field>
-            <p
-              id="application-answer-help"
-              role={answerInvalid ? "alert" : undefined}
-              className={answerInvalid ? "error-message" : "text-sm text-muted-foreground"}
-            >
-              {answerInvalid
-                ? `Odpowiedź jest za krótka. Wpisz co najmniej ${MIN_APPLICATION_ANSWER_LENGTH} znaków (obecnie: ${answerLength}).`
-                : `Minimum ${MIN_APPLICATION_ANSWER_LENGTH} znaków. Obecnie: ${answerLength}.`}
-            </p>
+            {matrixMode ? (
+              <>
+                <ContributionEditor
+                  projects={projects}
+                  onChange={(next) => {
+                    setProjects(next.map(toSimpleProject));
+                    setConsent(false);
+                  }}
+                  disabled={submitted}
+                  attempted={attempted}
+                />
+                {attempted && matrixValidation && !matrixValidation.success && (
+                  <p role="alert" className="error-message">
+                    Uzupełnij opis projektu i swój zakres odpowiedzialności.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="application-help">
+                  Wznawiasz wcześniejszy szkic tekstowy. Możesz go dokończyć albo samodzielnie
+                  rozdzielić wkład w nowej macierzy.
+                </p>
+                <Field label="Dlaczego pasujesz do tej roli?">
+                  <Textarea
+                    disabled={submitted}
+                    ref={answerInput}
+                    required
+                    minLength={MIN_APPLICATION_ANSWER_LENGTH}
+                    maxLength={12000}
+                    aria-invalid={answerInvalid || undefined}
+                    aria-describedby="application-answer-help"
+                    value={answer}
+                    onChange={(e) => {
+                      setAnswer(e.target.value);
+                      setConsent(false);
+                    }}
+                  />
+                </Field>
+                <p
+                  id="application-answer-help"
+                  role={answerInvalid ? "alert" : undefined}
+                  className={answerInvalid ? "error-message" : "text-sm text-muted-foreground"}
+                >
+                  {answerInvalid
+                    ? `Odpowiedź jest za krótka. Wpisz co najmniej ${MIN_APPLICATION_ANSWER_LENGTH} znaków (obecnie: ${answerLength}).`
+                    : `Minimum ${MIN_APPLICATION_ANSWER_LENGTH} znaków. Obecnie: ${answerLength}.`}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={submitted}
+                  onClick={() => {
+                    setMatrixMode(true);
+                    setConsent(false);
+                  }}
+                >
+                  Przejdź do formularza projektu
+                </Button>
+              </>
+            )}
           </section>
           <div className="application-form-section application-submit">
             <label className="application-consent">
@@ -386,8 +456,17 @@ export function ApplyPage() {
                 type="button"
                 disabled={submitted}
                 variant="outline"
-                onClick={() => {
-                  if (run({ type: "draft", jobId: job.id, notes, generated, answer }))
+                onClick={async () => {
+                  if (
+                    await run({
+                      type: "draft",
+                      jobId: job.id,
+                      notes,
+                      generated,
+                      answer,
+                      projects: matrixMode ? projects : undefined,
+                    })
+                  )
                     setMessage("Szkic został zapisany.");
                 }}
               >
@@ -424,13 +503,26 @@ export function ApplicationsPage({ employer = false }: { employer?: boolean }) {
   );
   return (
     <>
-      <PageTitle>{employer ? "Kandydaci" : "Moje aplikacje"}</PageTitle>
+      <PageTitle
+        action={
+          employer ? (
+            <Link
+              to="/app/podglad-macierzy"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Zobacz formularz projektu
+            </Link>
+          ) : undefined
+        }
+      >
+        {employer ? "Zgłoszenia" : "Moje aplikacje"}
+      </PageTitle>
       {params.has("wyslano") && (
         <Notice>
           <CheckCircle2 className="inline size-5" /> Aplikacja została wysłana.
         </Notice>
       )}
-      <Field label={employer ? "Szukaj kandydata lub oferty" : "Szukaj oferty"}>
+      <Field label={employer ? "Szukaj osoby lub oferty" : "Szukaj oferty"}>
         <Input value={query} onChange={(e) => setQuery(e.target.value)} />
       </Field>
       <div className="mt-6 space-y-4">

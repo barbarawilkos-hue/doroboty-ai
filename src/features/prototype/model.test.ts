@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { initialState, transition, stateSchema, type State } from "./model";
+import { projectSchema } from "./contribution-matrix";
+import contributionExample from "./data/contribution-example.json";
 const time = "2026-11-03T10:00:00.000Z";
 function as(state: State, id: string) {
   return transition(state, { type: "select_person", id });
@@ -14,6 +16,7 @@ function submitted() {
       notes: "Original notes",
       generated: "Generated copy",
       answer: "Approved application with sufficient context.",
+      projects: [projectSchema.parse(contributionExample)],
       consent: true,
     },
     time,

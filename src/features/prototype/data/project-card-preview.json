@@ -1,0 +1,38 @@
+[
+  {
+    "id": "A1",
+    "source": "Pracowałem przy wyszukiwarce dokumentów dla zespołu obsługi. Sam przygotowałem indeksowanie dokumentów i zestaw pytań do sprawdzenia trafności wyszukiwania. API przygotowała inna osoba. Korzystałem z AI do proponowania pytań; ich wybór i ocena odpowiedzi należały do mnie. Porównywałem odpowiedzi wyszukiwarki z treścią dokumentów. Zespół używał rozwiązania w pilotażu. Nie prowadziliśmy pomiaru czasu pracy.",
+    "gaps": [
+      "Nie ma niezależnego potwierdzenia autorstwa i jakości.",
+      "Nie podano wyniku trafności ani zmiany czasu."
+    ],
+    "candidate": "Osoba A",
+    "label": "A · konkretny opis własnej pracy",
+    "question": "Jak wyglądało sprawdzanie trafności wyszukiwania w Twojej części projektu i jakie były wyniki?",
+    "result": "Zespół używał rozwiązania w pilotażu. Nie prowadziliśmy pomiaru czasu pracy.",
+    "ownActions": [
+      "Przygotowałem indeksowanie dokumentów.",
+      "Przygotowałem zestaw pytań do sprawdzenia trafności wyszukiwania.",
+      "Wybierałem pytania proponowane przez AI i oceniałem odpowiedzi.",
+      "Porównywałem odpowiedzi wyszukiwarki z treścią dokumentów."
+    ],
+    "teamAndAi": "API przygotowała inna osoba. Korzystałem z AI do proponowania pytań; ich wybór i ocena odpowiedzi należały do mnie.",
+    "title": "Wyszukiwarka dokumentów"
+  },
+  {
+    "id": "B1",
+    "source": "W naszym projekcie wdrożyliśmy wyszukiwanie semantyczne dokumentów. Zwiększyliśmy trafność o 30%. Przygotowaliśmy indeks, integrację i zestaw testów. Korzystaliśmy z narzędzi AI do analizy i generowania odpowiedzi. Odpowiadałem za sukces projektu.",
+    "gaps": [
+      "Zdanie Odpowiadałem za sukces projektu nie wskazuje konkretnych własnych działań.",
+      "Nie podano sposobu pomiaru 30% ani własnego udziału w testach.",
+      "Nie ma niezależnego potwierdzenia autorstwa i rezultatu."
+    ],
+    "candidate": "Osoba B",
+    "label": "B · niejasny podział pracy",
+    "question": "Które elementy indeksu, integracji i testów należały do Twoich zadań?",
+    "result": "Zwiększyliśmy trafność o 30%.",
+    "ownActions": [],
+    "teamAndAi": "Przygotowaliśmy indeks, integrację i zestaw testów. Korzystaliśmy z narzędzi AI do analizy i generowania odpowiedzi.",
+    "title": "Wyszukiwarka dokumentów"
+  }
+]

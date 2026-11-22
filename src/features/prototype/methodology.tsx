@@ -39,7 +39,7 @@ export default function MethodologyPage() {
       <section className="mt-12 rounded-xl bg-muted/40 p-7">
         <h2 className="text-2xl font-semibold">Weryfikacja nie jest rekomendacją</h2>
         <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          Sprawdzamy źródło i kompletność informacji. Kandydat nadal powinien sam ocenić firmę,
+          Sprawdzamy źródło i kompletność informacji. Przed aplikowaniem samodzielnie oceń firmę,
           warunki i dopasowanie roli.
         </p>
       </section>

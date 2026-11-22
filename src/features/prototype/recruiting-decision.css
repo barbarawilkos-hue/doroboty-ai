@@ -1,0 +1,28 @@
+.recruiting-decision .record-actions {
+  margin-top: 18px;
+}
+.recruiting-decision [data-slot="button"] {
+  white-space: normal;
+}
+.recruiting-decision__question {
+  margin-top: 22px;
+}
+.recruiting-decision__question label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.recruiting-decision__question textarea {
+  margin-top: 10px;
+}
+.recruiting-decision__save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+.recruiting-decision__save .record-caption {
+  margin: 0;
+}

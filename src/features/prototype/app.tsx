@@ -1,3 +1,4 @@
+import { ContributionPreview } from "./contribution-preview";
 import { HashRouter, Routes, Route, Navigate } from "react-router";
 import { PrototypeProvider } from "./store";
 import { Shell, NotFound } from "./shell";
@@ -17,6 +18,8 @@ import {
 import { EmployerJobs, EmployerJobEditor, CompanyEditor } from "./employer";
 import { SettingsPage, PrivacyPage } from "./settings";
 import { CasePage } from "./case";
+import { ProjectCardPreview } from "./project-card-preview";
+import { HelpPage } from "./help";
 function AppRoutes() {
   return (
     <Routes>
@@ -27,6 +30,7 @@ function AppRoutes() {
         <Route path="firmy/:slug" element={<CompanyPage />} />
         <Route path="metodologia" element={<MethodologyPage />} />
         <Route path="polityka-prywatnosci" element={<PrivacyPage />} />
+        <Route path="pomoc" element={<HelpPage />} />
         <Route path="auth/:mode" element={<PersonPicker />} />
         <Route
           path="aplikuj/:slug"
@@ -141,7 +145,9 @@ function AppRoutes() {
             </RequireRole>
           }
         />
+        <Route path="app/podglad-macierzy" element={<ContributionPreview />} />
         <Route path="app/settings" element={<SettingsPage />} />
+        <Route path="app/podglad-karty" element={<ProjectCardPreview />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

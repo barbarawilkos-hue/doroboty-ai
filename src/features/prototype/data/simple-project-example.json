@@ -1,0 +1,5 @@
+{
+  "format": "simple",
+  "description": "Zespół przygotował asystenta do wyszukiwania instrukcji dla obsługi klientów. Celem było skrócenie szukania odpowiedzi. Inżynieria danych przygotowała import dokumentów, a DevOps środowisko pilotażowe. W pilotażu sprawdziliśmy 40 pytań; 32 odpowiedzi zawierały poprawne źródło.",
+  "responsibilities": "• Dobrałam 40 pytań z najczęstszych zgłoszeń i określiłam kryterium poprawnej odpowiedzi.\n• Porównałam dwa sposoby dzielenia dokumentów i wybrałam krótsze fragmenty.\n• Sprawdziłam odpowiedzi asystenta z treścią instrukcji."
+}

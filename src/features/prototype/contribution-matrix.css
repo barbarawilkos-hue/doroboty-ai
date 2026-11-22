@@ -1,0 +1,279 @@
+.contribution-editor,
+.contribution-readout {
+  min-width: 0;
+}
+.contribution-editor > h3,
+.contribution-readout > h3 {
+  font-size: 30px;
+  margin: 0 0 12px;
+}
+.matrix-intro,
+.matrix-help {
+  color: var(--gui-text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.matrix-project {
+  min-width: 0;
+  margin: 24px 0;
+  padding: 22px 0;
+  border-top: 1px solid var(--gui-edge);
+}
+.matrix-project > legend {
+  font-size: 14px;
+  font-weight: 600;
+  padding-right: 12px;
+}
+.matrix-field {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+  min-width: 0;
+}
+.matrix-field > label,
+.matrix-layer > label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.matrix-field textarea {
+  min-height: 92px;
+}
+.matrix-field :is(input, textarea) {
+  width: 100%;
+  min-width: 0;
+  font-size: 14px;
+}
+.matrix-field [aria-invalid="true"],
+.matrix-layer select[aria-invalid="true"] {
+  border: 2px solid var(--gui-text);
+}
+.matrix-layer {
+  min-width: 0;
+  border: 1px solid var(--gui-edge);
+  border-radius: 18px;
+  padding: 18px;
+  margin: 24px 0;
+}
+.matrix-layer > legend {
+  font-family: var(--font-editorial);
+  font-size: 23px;
+  padding: 0 8px;
+}
+.matrix-layer > p {
+  margin: 0 0 16px;
+}
+.matrix-layer > label {
+  display: block;
+  margin-bottom: 8px;
+}
+.matrix-layer select {
+  border: 1px solid var(--gui-text);
+  border-radius: 10px;
+  background: white;
+  padding: 10px;
+  width: 100%;
+  font-size: 14px;
+  white-space: normal;
+}
+.matrix-options {
+  margin-top: 18px;
+}
+.matrix-option {
+  border-top: 1px solid var(--gui-edge);
+  padding: 14px 0;
+}
+.matrix-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.matrix-choice [data-slot="checkbox"] {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.matrix-detail {
+  padding-left: 26px;
+}
+.matrix-unknown {
+  padding: 14px;
+  background: #ffe0f7;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.matrix-kicker {
+  font-family: var(--font-interface);
+  font-size: 12px;
+  font-weight: 600;
+}
+.contribution-readout {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--gui-edge);
+}
+.contribution-readout > p {
+  margin-bottom: 14px;
+}
+.matrix-submitted-project {
+  margin-top: 28px;
+}
+.matrix-submitted-project > header > h4 {
+  font-size: 28px;
+  margin: 6px 0 12px;
+}
+.matrix-submitted-project > header > p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.matrix-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.matrix-column {
+  padding: 18px;
+  background: #f4f4f0;
+  border-radius: 18px;
+  min-width: 0;
+}
+.matrix-column--own {
+  background: #ffe0f7;
+}
+.matrix-column h5,
+.matrix-result h5 {
+  font-size: 23px;
+  line-height: 1.25;
+  margin: 0 0 14px;
+}
+.matrix-column :is(p, li, dt, dd),
+.matrix-result p {
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.matrix-column ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.matrix-column li + li {
+  border-top: 1px solid var(--gui-edge);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.matrix-column strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.matrix-owner {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.matrix-column dl {
+  border-top: 1px solid var(--gui-edge);
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.matrix-column dt {
+  font-weight: 600;
+}
+.matrix-column dd {
+  margin: 6px 0 16px;
+}
+.matrix-result {
+  padding: 18px 0;
+  border-top: 1px solid var(--gui-edge);
+}
+.matrix-missing p {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.matrix-missing a {
+  margin-top: 10px;
+  white-space: normal;
+}
+.matrix-demo {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.matrix-demo h1 {
+  font-size: clamp(38px, 5vw, 60px);
+  margin-bottom: 18px;
+}
+.matrix-demo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0;
+}
+.matrix-demo .record-sheet > h2 {
+  font-size: 30px;
+  margin-bottom: 20px;
+}
+.matrix-demo .contribution-readout {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 1100px) {
+  .matrix-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .matrix-layer {
+    padding: 14px;
+  }
+  .matrix-layer > legend {
+    font-size: 22px;
+  }
+  .matrix-detail {
+    padding-left: 0;
+  }
+  .matrix-demo-toolbar [data-slot="button"] {
+    white-space: normal;
+  }
+}
+
+.simple-project-form .matrix-field textarea {
+  min-height: 130px;
+}
+.simple-project-description,
+.simple-project-responsibilities {
+  margin-top: 20px;
+}
+.simple-project-readout h4 {
+  font-size: 26px;
+  margin: 0 0 12px;
+}
+.simple-project-description p {
+  font-size: 15px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.simple-project-responsibilities {
+  padding: 20px;
+  border-radius: 18px;
+  background: #ffe0f7;
+}
+.simple-project-responsibilities ul {
+  list-style: disc;
+  padding-left: 22px;
+  margin: 0;
+}
+.simple-project-responsibilities li {
+  font-size: 15px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.simple-project-responsibilities li + li {
+  margin-top: 8px;
+}

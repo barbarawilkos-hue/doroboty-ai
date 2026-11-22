@@ -43,12 +43,12 @@ export function CandidateApplication({ application }: { application: Application
                 <Button
                   ref={confirmRef}
                   variant="destructive"
-                  onClick={() => {
-                    if (run({ type: "withdraw", applicationId: application.id })) {
-                      focusAfter.current = "status";
+                  onClick={async () => {
+                    focusAfter.current = "status";
+                    if (await run({ type: "withdraw", applicationId: application.id })) {
                       setConfirming(false);
                       setAnnouncement("Aplikacja została wycofana.");
-                    }
+                    } else focusAfter.current = null;
                   }}
                 >
                   Potwierdź wycofanie

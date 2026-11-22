@@ -14,7 +14,7 @@ A participant can start with Node.js 24 and npm, extend the prototype and test a
 - Use prepared personas instead of real accounts. Candidate and employer views share one browser-local scenario.
 - Provide reset, validated import/export and recovery guidance.
 - Retain jobs, filters/list/map, companies, profiles, sample CVs, saved jobs, application drafts/submission and recruiting decisions.
-- Candidates write their application answers directly; there is no candidate notes editor or AI proposal flow. Legacy candidate notes/generated text remain separate from approved answers in version-1 saves and imports, and are preserved when saving or submitting a resumed draft.
+- New applications use two written project fields: a general description and the person’s own concrete responsibilities, one point per line. There are no action selectors or required team/AI questions; no AI attribution or candidate proposal generation. Existing text drafts may resume their original editor. Legacy candidate notes/generated text remain separate from approved answers in version-1 saves and imports, and are preserved when saving or submitting a resumed draft.
 - Preserve employer source briefs separately from approved descriptions. UX demonstrations are not evidence of model quality or hiring probability.
 - Keep submitted applications/CVs immutable while profiles and jobs evolve.
 - Keep historical teaching evidence separate from locally created prototype records. The shipped stage is baseline only.

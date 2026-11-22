@@ -6,17 +6,28 @@ import { readFile } from "node:fs/promises";
 async function choose(page: Page, name: string) {
   await page.goto("/#/auth/sign-in");
   await page.getByRole("button", { name: `Wejdź jako ${name}`, exact: true }).click();
+  await expect(page).not.toHaveURL(/#\/auth\/sign-in/);
+}
+async function fillMatrix(
+  page: Page,
+  detail = "Dobrałam pytania do testów i ustaliłam kryterium poprawności odpowiedzi.",
+) {
+  await page
+    .getByLabel("Opis projektu", { exact: true })
+    .fill(
+      "Zespół przygotował wyszukiwanie instrukcji dla obsługi klientów. Sprawdziliśmy działanie na pytaniach testowych.",
+    );
+  const input = page.getByLabel("Twój zakres odpowiedzialności", { exact: true });
+  await input.fill(detail);
+  return input;
 }
 async function application(page: Page) {
   await choose(page, "Anna Kowalska");
   await page.goto("/#/aplikuj/ai-product-manager");
-  await page
-    .getByLabel("Dlaczego pasujesz do tej roli?")
-    .fill(
-      "Zaprojektowałam proces automatyzacji i przeprowadziłam badania użytkowników. Wynik: krótszy czas obsługi zgłoszeń o 30%.",
-    );
-  await page.getByRole("checkbox").check();
+  await fillMatrix(page);
+  await page.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }).check();
   await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();
+  await expect(page.getByText("Aplikacja została wysłana.", { exact: false })).toBeVisible();
 }
 
 for (const [name, filename] of [
@@ -47,6 +58,7 @@ for (const [name, filename] of [
     expect(await readFile((await download.path())!)).toEqual(bytes);
     await page.getByLabel("Imię i nazwisko").fill(`Zmieniony profil ${name}`);
     await page.getByRole("button", { name: "Zapisz profil", exact: true }).click();
+    await expect(page.getByText("Profil został zapisany.", { exact: true })).toBeVisible();
     await page.reload();
     await expect(downloadLink).toHaveAttribute("href", href!);
     await page.setViewportSize({ width: 375, height: 812 });
@@ -62,10 +74,8 @@ for (const [name, filename] of [
       "target",
       "_blank",
     );
-    await page
-      .getByLabel("Dlaczego pasujesz do tej roli?")
-      .fill("Mam doświadczenie w rozwoju produktów i automatyzacji obsługi zgłoszeń.");
-    await page.getByRole("checkbox").check();
+    await fillMatrix(page);
+    await page.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }).check();
     await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();
     await page.getByRole("link", { name: "AI Operations Specialist", exact: true }).click();
     await page.getByRole("tab", { name: "CV", exact: true }).click();
@@ -74,7 +84,7 @@ for (const [name, filename] of [
     await choose(page, "Karolina Wiśniewska");
     await page.goto(`/#/app/kandydaci/${id}`);
     await page.reload();
-    await expect(downloadLink).toHaveCount(0);
+    await expect(page.getByRole("tabpanel", { name: "CV", exact: true })).toBeVisible();
     await page.getByRole("tab", { name: "CV", exact: true }).click();
     await expect(downloadLink).toHaveAttribute("href", href!);
     await page.screenshot({ path: `artifacts/${filename}-employer-desktop.png`, fullPage: true });
@@ -117,21 +127,24 @@ test("published job → saved offer/draft → submitted application → employer
   await page.getByRole("link", { name: "Product Designer do automatyzacji", exact: true }).click();
   await page.getByRole("button", { name: "Zapisz ofertę", exact: true }).click();
   await page.getByRole("link", { name: "Aplikuj", exact: true }).click();
-  const answer = page.getByLabel("Dlaczego pasujesz do tej roli?");
   const draftAnswer =
     "Przeprowadziłam badania z użytkownikami i wdrożyłam automatyzację. Czas obsługi skrócił się o 30%.";
   await expect(page.getByLabel("Twoje notatki do aplikacji (opcjonalnie)")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Przygotuj propozycję z AI" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Użyj propozycji" })).toHaveCount(0);
-  await answer.fill(draftAnswer);
+  const answer = await fillMatrix(page, draftAnswer);
   await page.getByRole("button", { name: "Zapisz szkic" }).click();
   await expect(page.getByRole("status")).toHaveText("Szkic został zapisany.");
   expect(
     await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).drafts.at(-1), STORAGE_KEY),
-  ).toMatchObject({ notes: "", generated: "", answer: draftAnswer });
+  ).toMatchObject({
+    notes: "",
+    generated: "",
+    projects: [expect.objectContaining({ format: "simple", responsibilities: draftAnswer })],
+  });
   await page.reload();
   await expect(answer).toHaveValue(draftAnswer);
-  await page.getByRole("checkbox").check();
+  await page.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }).check();
   await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();
   await expect(page.getByText("Aplikacja została wysłana.", { exact: false })).toBeVisible();
   await page.reload();
@@ -139,14 +152,17 @@ test("published job → saved offer/draft → submitted application → employer
   const candidateUrl = page.url();
   await expect(page.getByText("Match Score: 84%", { exact: true })).toBeVisible();
   await choose(page, "Karolina Wiśniewska");
-  await page.getByRole("link", { name: "Kandydaci", exact: true }).click();
+  await page.getByRole("link", { name: "Zgłoszenia", exact: true }).click();
   await page.getByRole("link", { name: "Anna Kowalska", exact: true }).click();
-  await page
-    .getByLabel("Notatka rekrutacyjna (widoczna pracodawcy)")
-    .fill("Notatka pracodawcy — tylko panel firmy.");
-  await page.getByRole("button", { name: "W przeglądzie", exact: true }).click();
-  for (const label of ["Zaproszenie na rozmowę", "Pierwsza rozmowa odbyta", "Kolejny etap"])
+  await page.getByRole("button", { name: "Dopytaj", exact: true }).click();
+  await page.getByLabel("Propozycja pytania").fill("Notatka pracodawcy — tylko panel firmy.");
+  await page.getByRole("button", { name: "Zapisz dopytanie", exact: true }).click();
+  await page.getByRole("button", { name: "Zaproś na rozmowę", exact: true }).click();
+  await page.getByRole("button", { name: "Zapisz zaproszenie", exact: true }).click();
+  for (const label of ["Pierwsza rozmowa odbyta", "Kolejny etap"]) {
     await page.getByRole("button", { name: label, exact: true }).click();
+    await expect(page.locator(".record-stage")).toHaveText(label);
+  }
   await page.reload();
   await expect(page.getByRole("button", { name: "Zatrudnienie", exact: true })).toBeVisible();
   await choose(page, "Anna Kowalska");
@@ -175,6 +191,7 @@ test("candidate withdrawal is confirmed and terminal", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Wycofaj aplikację", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Wycofaj aplikację", exact: true }).click();
   await page.getByRole("button", { name: "Potwierdź wycofanie", exact: true }).click();
+  await expect(page.locator(".record-stage")).toHaveText("Wycofana");
   await page.reload();
   await expect(page.locator(".record-stage")).toHaveText("Wycofana");
 });
@@ -219,12 +236,12 @@ test("invalid import preserves state, valid import replaces state, reset asks fo
   await expect(page.getByText("Zaimportowana Anna", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Resetuj scenariusz", exact: true }).click();
   await page.getByRole("button", { name: "Resetuj", exact: true }).click();
-  expect(
-    await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)!).activePersonId,
-      STORAGE_KEY,
-    ),
-  ).toBe(null);
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).activePersonId, STORAGE_KEY),
+    )
+    .toBe(null);
 });
 test("unreadable save stays untouched while the user works in memory", async ({ page }) => {
   await page.goto("/");
@@ -314,29 +331,28 @@ test("public home and filters reflow at 320px with no external requests", async 
   await page.screenshot({ path: "artifacts/jobs-mobile.png", fullPage: true });
 });
 
-test("application submission explains short answers and missing approval without losing input", async ({
+test("matrix submission requires attributed details and approval without losing input", async ({
   page,
 }) => {
   await choose(page, "Anna Kowalska");
   await page.goto("/#/aplikuj/ai-product-manager");
-  const answer = page.getByLabel("Dlaczego pasujesz do tej roli?");
   const send = page.getByRole("button", { name: "Wyślij aplikację", exact: true });
-  await answer.fill("krótka odpowiedź");
-  await page.getByRole("checkbox").check();
-  await expect(send).toBeEnabled();
+  await page.getByLabel("Opis projektu", { exact: true }).fill("Mój projekt");
   await send.click();
-  await expect(page.getByRole("alert")).toContainText("Odpowiedź jest za krótka");
-  await expect(answer).toBeFocused();
-  await expect(answer).toHaveAttribute("aria-invalid", "true");
-  await expect(page.getByRole("checkbox")).toBeChecked();
-  await expect(answer).toHaveValue("krótka odpowiedź");
-  await answer.fill("Moje doświadczenie pasuje do odpowiedzialności opisanej w tej ofercie.");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Uzupełnij opis projektu" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Opis projektu", { exact: true })).toHaveValue("Mój projekt");
+  const detail = await fillMatrix(page, "- \n• ");
   await send.click();
-  await expect(page.getByRole("alert")).toHaveText(
-    "Zatwierdź treść aplikacji i jej przesłanie pracodawcy.",
-  );
-  await expect(page.getByRole("checkbox")).toBeFocused();
-  await page.getByRole("checkbox").check();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Uzupełnij opis projektu" }),
+  ).toBeVisible();
+  await expect(detail).toBeFocused();
+  await detail.fill("Dobrałam pytania i samodzielnie określiłam kryterium poprawności odpowiedzi.");
+  await send.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Zatwierdź treść" })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }).check();
   await send.click();
   await expect(page.getByText("Aplikacja została wysłana.", { exact: false })).toBeVisible();
 });
@@ -365,6 +381,7 @@ for (const width of [1440, 375]) {
       buffer: Buffer.from(JSON.stringify(legacy)),
     });
     await page.getByRole("button", { name: "Importuj", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
     await page.goto(`/#/aplikuj/${job.slug}`);
     await page.reload();
     const form = page.locator("main form");
@@ -390,6 +407,10 @@ for (const width of [1440, 375]) {
     ).toBe(true);
     await answer.focus();
     await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("button", { name: "Przejdź do formularza projektu", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(page.getByRole("checkbox")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Wyślij aplikację", exact: true })).toBeFocused();
@@ -397,6 +418,7 @@ for (const width of [1440, 375]) {
     await expect(page.getByRole("button", { name: "Zapisz szkic", exact: true })).toBeFocused();
     const editedAnswer = "Moja poprawiona odpowiedź opisuje doświadczenie potrzebne w tej roli.";
     await answer.fill(editedAnswer);
+    await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
@@ -418,6 +440,7 @@ for (const width of [1440, 375]) {
       fullPage: true,
     });
     await answer.focus();
+    await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Space");
     await page.keyboard.press("Tab");
@@ -460,6 +483,7 @@ test("legacy dark preference keeps scenario data and renders the light interface
   await expect(page.locator("html")).not.toHaveClass(/dark/);
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(244, 244, 240)");
   await page.getByRole("button", { name: "Zapisz profil", exact: true }).click();
+  await expect(page.getByText("Profil został zapisany.", { exact: true })).toBeVisible();
   expect(
     await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).theme, STORAGE_KEY),
   ).toBeUndefined();
@@ -684,12 +708,15 @@ test("homepage surfaces and marketplace action type roles match the shared refer
   }
 });
 
-test("process sheet keeps notes across keyboard tabs and saves stage history with focus", async ({
+test("process sheet keeps a clarification across keyboard tabs and saves decisions with focus", async ({
   page,
 }) => {
   await choose(page, "Karolina Wiśniewska");
   await page.goto("/#/app/kandydaci/application-example");
-  const note = page.getByLabel("Notatka rekrutacyjna (widoczna pracodawcy)");
+  await page.getByRole("button", { name: "Dopytaj", exact: true }).click();
+  const note = page.getByLabel("Propozycja pytania");
+  await expect(note).toBeFocused();
+  await expect(note).not.toHaveValue("");
   await expect(
     page.locator(".record-meta").getByText("Match Score: 72%", { exact: true }),
   ).toBeVisible();
@@ -725,14 +752,15 @@ test("process sheet keeps notes across keyboard tabs and saves stage history wit
   await expect(note).toHaveValue(text);
   await expect(preview).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Pobierz CV (PDF)", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "W przeglądzie", exact: true }).click();
+  await page.getByRole("button", { name: "Zapisz dopytanie", exact: true }).click();
   await expect(page.locator(".record-stage")).toBeFocused();
-  await expect(note).toHaveValue("");
+  await expect(note).toHaveCount(0);
   await expect(page.locator(".process-timeline")).toContainText(text);
   await page.reload();
   await expect(page.locator(".process-timeline")).toContainText(text);
-  await note.fill("Zakończenie przykładowego procesu.");
-  await page.getByRole("button", { name: "Proces zakończony", exact: true }).click();
+  await page.getByRole("button", { name: "Odrzuć", exact: true }).click();
+  await expect(page.locator(".record-stage")).toHaveText("W przeglądzie");
+  await page.getByRole("button", { name: "Zapisz odrzucenie", exact: true }).click();
   await expect(page.locator(".record-stage")).toBeFocused();
   await expect(note).toHaveCount(0);
   await expect(page.locator(".record-actions")).toHaveCount(0);
@@ -742,6 +770,40 @@ test("process sheet keeps notes across keyboard tabs and saves stage history wit
   await choose(page, "Marek Nowak");
   await page.goto("/#/app/aplikacje/application-example");
   await expect(page.getByText(text, { exact: true })).toHaveCount(0);
+});
+
+test("legacy text remains unassigned while a submitted matrix reaches both audiences", async ({
+  page,
+}) => {
+  await choose(page, "Karolina Wiśniewska");
+  await page.goto("/#/app/kandydaci/application-example");
+  await expect(
+    page.getByRole("region", { name: "Brak osobnego zakresu odpowiedzialności" }),
+  ).toBeVisible();
+  await expect(page.locator(".project-evidence")).toHaveCount(0);
+  await expect(page.getByRole("tabpanel", { name: "Odpowiedź" })).toContainText(
+    "Pracowałem nad automatyzacją",
+  );
+  await application(page);
+  await page.getByRole("link", { name: "AI Product Manager", exact: true }).click();
+  const candidateUrl = page.url();
+  const matrix = page.getByRole("region", { name: "Projekt i wkład ze zgłoszenia" });
+  const own = matrix.getByRole("region", { name: "Zakres odpowiedzialności", exact: true });
+  await expect(own).toContainText("Dobrałam pytania");
+  await page.getByRole("tab", { name: "CV", exact: true }).click();
+  await expect(matrix).toBeVisible();
+  const ownText = await own.innerText();
+  await choose(page, "Karolina Wiśniewska");
+  await page.goto(candidateUrl.replace("/app/aplikacje/", "/app/kandydaci/"));
+  await expect(own).toHaveText(ownText, { useInnerText: true });
+  await page.reload();
+  await expect(own).toHaveText(ownText, { useInnerText: true });
+  for (const width of [1280, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  }
 });
 
 test("process sheet renders custom snapshots and long content on narrow screens", async ({
@@ -764,6 +826,7 @@ test("process sheet renders custom snapshots and long content on narrow screens"
   await page.reload();
   await choose(page, "Karolina Wiśniewska");
   await page.goto("/#/app/kandydaci/application-example");
+  await expect(page.locator(".project-evidence")).toHaveCount(0);
   await expect(page.getByText("Zapisana treść CV", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Pobierz CV (PDF)", exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "CV", exact: true }).click();
@@ -810,16 +873,18 @@ for (const width of [1280, 390]) {
     await expect(offer).toContainText("BrightLabs");
     await expect(offer).toContainText("Hybrydowo");
     const form = page.getByRole("form", { name: "Twoja aplikacja", exact: true });
-    const answer = form.getByLabel("Dlaczego pasujesz do tej roli?");
-    const text = "Prowadziłam badania i wdrożenie automatyzacji obsługi zgłoszeń w produkcie B2B.";
-    await answer.fill(text);
-    await form.getByRole("checkbox").check();
+    const text =
+      "Dobrałam metryki i przygotowałam zestaw pytań do sprawdzenia automatyzacji obsługi.";
+    const answer = await fillMatrix(page, text);
+    await form.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }).check();
     const description = offer.locator("summary");
     await description.focus();
     await page.keyboard.press("Enter");
     await expect(offer.locator("[data-job-description]")).toBeVisible();
     await expect(answer).toHaveValue(text);
-    await expect(form.getByRole("checkbox")).toBeChecked();
+    await expect(
+      form.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }),
+    ).toBeChecked();
     await page.keyboard.press("Enter");
     await expect(offer.locator("[data-job-description]")).toBeHidden();
     await expect(form.getByRole("region", { name: "Twoje CV", exact: true })).toContainText(
@@ -830,9 +895,12 @@ for (const width of [1280, 390]) {
       /^\.?\/cv\/anna-kowalska-cv-v1\.pdf$/,
     );
     await form.getByRole("button", { name: "Zapisz szkic", exact: true }).click();
+    await expect(page.getByRole("status")).toHaveText("Szkic został zapisany.");
     await page.reload();
     await expect(answer).toHaveValue(text);
-    await expect(form.getByRole("checkbox")).not.toBeChecked();
+    await expect(
+      form.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }),
+    ).not.toBeChecked();
     const accessibility = await new AxeBuilder({ page }).include(".application-page").analyze();
     expect(accessibility.violations).toEqual([]);
   });
@@ -845,19 +913,17 @@ for (const reducedMotion of ["no-preference", "reduce"] as const) {
     await page.emulateMedia({ reducedMotion });
     await choose(page, "Anna Kowalska");
     await page.goto("/#/aplikuj/ai-product-manager");
-    const answer = page.getByLabel("Dlaczego pasujesz do tej roli?");
-    await answer.fill("krótko");
+    const answer = page.getByLabel("Opis projektu", { exact: true });
+    await answer.fill("kr");
     await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();
     await expect(
-      page.getByRole("alert").filter({ hasText: "Odpowiedź jest za krótka" }),
-    ).toContainText("Odpowiedź jest za krótka");
+      page.getByRole("alert").filter({ hasText: "Uzupełnij opis projektu" }),
+    ).toContainText("Uzupełnij opis projektu i swój zakres odpowiedzialności.");
     await expect(page.locator(".confetti-burst")).toHaveCount(0);
-    await answer.fill(
-      "Prowadziłam badania użytkowników i wdrożenie automatyzacji procesu obsługi.",
-    );
+    await fillMatrix(page);
     await page.getByRole("button", { name: "Zapisz szkic", exact: true }).click();
     await expect(page.locator(".confetti-burst")).toHaveCount(0);
-    await page.getByRole("checkbox").check();
+    await page.getByRole("checkbox", { name: "Zatwierdzam treść i przesłanie aplikacji" }).check();
     await page.clock.install({ time: new Date("2026-11-03T10:00:00Z") });
     await page.clock.pauseAt(new Date("2026-11-03T10:00:01Z"));
     await page.getByRole("button", { name: "Wyślij aplikację", exact: true }).click();

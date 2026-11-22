@@ -2,6 +2,12 @@ import { z } from "zod";
 import marketplace from "./data/marketplace.json" with { type: "json" };
 import people from "./data/people.json" with { type: "json" };
 import type { JobWithCompany } from "@/features/jobs/types";
+import {
+  projectDraftSchema,
+  projectsSchema,
+  projectAnswer,
+  type ContributionProject,
+} from "./contribution-matrix";
 
 const id = z
   .string()
@@ -84,6 +90,8 @@ export const stages = [
   "hired",
 ] as const;
 export type Stage = (typeof stages)[number];
+export const recruitingDecisions = ["clarify", "invite", "decline"] as const;
+export type RecruitingDecision = (typeof recruitingDecisions)[number];
 export const stageLabels: Record<Stage, string> = {
   submitted: "Aplikacja wysłana",
   reviewed: "W przeglądzie",
@@ -113,13 +121,21 @@ const applicationSchema = z.object({
   candidateName: shortText,
   cv: text.min(20),
   answer: text.min(MIN_APPLICATION_ANSWER_LENGTH),
+  projects: projectsSchema.optional(),
   sourceNotes: text,
   generatedAnswer: text,
   score: z.number().int().min(0).max(100),
   summary: text,
   stage: z.enum(stages),
   events: z
-    .array(z.object({ stage: z.enum(stages), at: z.iso.datetime(), note: text }))
+    .array(
+      z.object({
+        stage: z.enum(stages),
+        at: z.iso.datetime(),
+        note: text,
+        decision: z.enum(recruitingDecisions).optional(),
+      }),
+    )
     .min(1)
     .max(30),
 });
@@ -129,6 +145,7 @@ const draftSchema = z.object({
   notes: text,
   generated: text,
   answer: text,
+  projects: z.array(projectDraftSchema).min(1).max(3).optional(),
 });
 export const stateSchema = z
   .object({
@@ -175,8 +192,20 @@ export const stateSchema = z
       for (let i = 1; i < a.events.length; i++) {
         const before = a.events[i - 1];
         const after = a.events[i];
+        if (
+          after.decision &&
+          (after.stage !==
+            { clarify: "reviewed", invite: "interview_invited", decline: "rejected" }[
+              after.decision
+            ] ||
+            (after.decision === "clarify" && !after.note.trim()))
+        )
+          problem("Invalid recruiting decision");
         if (!(
           nextStages[before.stage].includes(after.stage) ||
+          (before.stage === "reviewed" &&
+            after.stage === "reviewed" &&
+            after.decision === "clarify") ||
           (after.stage === "withdrawn" &&
             !["hired", "rejected", "withdrawn"].includes(before.stage))
         ))
@@ -201,7 +230,14 @@ export type Action =
   | { type: "select_person"; id: string | null }
   | { type: "profile"; value: z.infer<typeof profileSchema> }
   | { type: "toggle_saved"; jobId: string }
-  | { type: "draft"; jobId: string; notes: string; generated: string; answer: string }
+  | {
+      type: "draft";
+      jobId: string;
+      notes: string;
+      generated: string;
+      answer: string;
+      projects?: ContributionProject[];
+    }
   | {
       type: "submit";
       jobId: string;
@@ -209,8 +245,15 @@ export type Action =
       generated: string;
       answer: string;
       consent: boolean;
+      projects?: ContributionProject[];
     }
   | { type: "stage"; applicationId: string; stage: Stage; note: string }
+  | {
+      type: "recruiting_decision";
+      applicationId: string;
+      decision: RecruitingDecision;
+      question?: string;
+    }
   | { type: "withdraw"; applicationId: string }
   | { type: "publish"; job: z.infer<typeof jobSchema> }
   | { type: "company"; name: string; description: string };
@@ -267,7 +310,7 @@ export function transition(
     throw new Error(message);
   };
   const candidate = () => {
-    if (person?.role !== "candidate") return fail("Wybierz profil kandydata.");
+    if (person?.role !== "candidate") return fail("Wybierz profil osoby aplikującej.");
     return person;
   };
   const employer = () => {
@@ -298,6 +341,16 @@ export function transition(
     if (!action.consent) fail("Zatwierdź treść i zgodę na przesłanie aplikacji.");
     if (s.applications.some((x) => x.candidateId === p.id && x.jobId === job.id))
       fail("Aplikacja na tę ofertę została już wysłana.");
+    const legacyDraft = s.drafts.find(
+      (draft) =>
+        draft.candidateId === p.id &&
+        draft.jobId === job.id &&
+        !draft.projects &&
+        draft.answer.trim(),
+    );
+    if (!action.projects && !legacyDraft)
+      fail("Uzupełnij opis projektu i swój zakres odpowiedzialności przed wysłaniem zgłoszenia.");
+    const projects = action.projects ? projectsSchema.parse(action.projects) : undefined;
     s.applications.push(
       applicationSchema.parse({
         id: newId,
@@ -307,7 +360,8 @@ export function transition(
         jobTitle: job.title,
         candidateName: p.name,
         cv: p.cv,
-        answer: action.answer,
+        answer: projects ? projectAnswer(projects) : action.answer,
+        projects,
         sourceNotes: action.notes,
         generatedAnswer: action.generated,
         score: p.exampleScore,
@@ -317,6 +371,33 @@ export function transition(
       }),
     );
     s.drafts = s.drafts.filter((x) => !(x.candidateId === p.id && x.jobId === job.id));
+  } else if (action.type === "recruiting_decision") {
+    const p = employer();
+    const application = s.applications.find((x) => x.id === action.applicationId);
+    if (
+      !application ||
+      application.companyId !== p.companyId ||
+      !["submitted", "reviewed"].includes(application.stage)
+    )
+      return fail("Ta decyzja nie jest dostępna dla tego zgłoszenia.");
+    const decision = z.enum(recruitingDecisions).parse(action.decision);
+    const note =
+      decision === "clarify"
+        ? text
+            .trim()
+            .min(1)
+            .parse(action.question ?? "")
+        : "";
+    if (decision === "invite" && application.stage === "submitted")
+      application.events.push({ stage: "reviewed", at: now, note: "" });
+    const stage: Stage =
+      decision === "clarify"
+        ? "reviewed"
+        : decision === "invite"
+          ? "interview_invited"
+          : "rejected";
+    application.stage = stage;
+    application.events.push({ stage, at: now, note, decision });
   } else if (action.type === "stage" || action.type === "withdraw") {
     const application = s.applications.find((x) => x.id === action.applicationId);
     if (!application) return fail("Nie znaleziono aplikacji.");

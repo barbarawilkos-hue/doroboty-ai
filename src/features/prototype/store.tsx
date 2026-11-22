@@ -1,6 +1,15 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { initialState, transition, type Action, type State } from "./model";
-import { parseState, readState, saveState, type StoragePort } from "./storage";
+import {
+  parseState,
+  readState,
+  saveState,
+  STORAGE_KEY,
+  WRITE_LOCK,
+  StorageConflictError,
+  type StoragePort,
+} from "./storage";
+import { recordDiagnostic } from "./diagnostics";
 function browserStorage(): StoragePort | null {
   try {
     return window.localStorage;
@@ -8,30 +17,74 @@ function browserStorage(): StoragePort | null {
     return null;
   }
 }
+const memoryAdvice =
+  "Zmiany w tej karcie pozostają tylko w pamięci. Wyeksportuj je przed zamknięciem strony.";
 function useStore() {
-  const [loaded] = useState(() => readState(browserStorage()));
+  const [storage] = useState(browserStorage);
+  const [loaded] = useState(() => readState(storage));
   const [state, setState] = useState(loaded.state);
-  const [issue, setIssue] = useState(loaded.issue);
+  const [issue, setIssue] = useState(loaded.issue || (!navigator.locks ? memoryAdvice : ""));
   const [error, setError] = useState("");
-  const [blocked, setBlocked] = useState(loaded.blocked);
+  const [conflict, setConflict] = useState(false);
+  const [recoveryState, setRecoveryState] = useState<State | null>(null);
+  const [original, setOriginal] = useState(loaded.original);
+  const [generation, setGeneration] = useState(0);
+  const blocked = useRef(loaded.blocked);
+  const conflicting = useRef(false);
+  const expectedRaw = useRef(loaded.raw);
   const latest = useRef(state);
-  function commit(next: State, replace = false) {
+  function markConflict(next?: State) {
+    conflicting.current = true;
+    setConflict(true);
+    if (next) setRecoveryState((previous) => previous ?? next);
+    setIssue(new StorageConflictError().message);
+    recordDiagnostic("storage-conflict");
+  }
+  function apply(next: State) {
     latest.current = next;
     setState(next);
     setError("");
-    if (blocked && !replace) return;
-    try {
-      saveState(browserStorage(), next);
-      setIssue("");
-      if (replace) setBlocked(false);
-    } catch (e) {
-      setIssue((e as Error).message);
-    }
   }
-  function run(action: Action) {
+  async function commit(createNext: () => State, replace = false) {
+    const perform = () => {
+      const next = createNext();
+      if (conflicting.current) {
+        markConflict(next);
+        return false;
+      }
+      if (blocked.current && !replace) {
+        apply(next);
+        return true;
+      }
+      if (!storage || !navigator.locks) {
+        apply(next);
+        setIssue(memoryAdvice);
+        recordDiagnostic("storage-unavailable");
+        return true;
+      }
+      try {
+        expectedRaw.current = saveState(storage, next, expectedRaw.current);
+        if (replace) blocked.current = false;
+        setIssue("");
+        apply(next);
+        return true;
+      } catch (e) {
+        if (e instanceof StorageConflictError) {
+          markConflict(next);
+          return false;
+        }
+        apply(next);
+        setIssue(memoryAdvice);
+        recordDiagnostic("storage-write-failed");
+        return true;
+      }
+    };
+    // Serialize the comparison and write, including truly simultaneous tab actions.
+    return storage && navigator.locks ? navigator.locks.request(WRITE_LOCK, perform) : perform();
+  }
+  async function run(action: Action) {
     try {
-      commit(transition(latest.current, action));
-      return true;
+      return await commit(() => transition(latest.current, action));
     } catch (e) {
       setError(
         e instanceof Error && e.name !== "ZodError"
@@ -41,29 +94,66 @@ function useStore() {
       return false;
     }
   }
-  function importState(raw: string) {
+  async function importState(raw: string) {
     try {
       const next = parseState(raw);
-      commit(next, true);
-      return true;
-    } catch (e) {
-      setError((e as Error).message);
+      return await commit(() => next, true);
+    } catch {
+      setError(
+        "Nieprawidłowy plik lub nieobsługiwana wersja danych. Dotychczasowy stan pozostaje bez zmian.",
+      );
+      recordDiagnostic("invalid-import");
       return false;
     }
   }
+  function loadLatest() {
+    const next = readState(storage);
+    expectedRaw.current = next.raw;
+    blocked.current = next.blocked;
+    conflicting.current = false;
+    setConflict(false);
+    setRecoveryState(null);
+    setOriginal(next.original);
+    setIssue(next.issue || (!navigator.locks ? memoryAdvice : ""));
+    apply(next.state);
+    setGeneration((value) => value + 1);
+  }
   useEffect(() => {
+    function changed(event: StorageEvent) {
+      if (
+        (event.key === STORAGE_KEY || event.key === null) &&
+        event.newValue !== expectedRaw.current
+      ) {
+        conflicting.current = true;
+        setConflict(true);
+        setIssue(new StorageConflictError().message);
+      }
+    }
+    window.addEventListener("storage", changed);
     document.documentElement.classList.remove("dark");
+    return () => window.removeEventListener("storage", changed);
   }, []);
   return {
     state,
     issue,
     error,
-    blocked,
-    original: loaded.original,
+    conflict,
+    generation,
+    original,
+    blocked: blocked.current,
+    exportState: recoveryState ?? state,
     run,
     importState,
+    loadLatest,
     clearError: () => setError(""),
-    reset: () => commit(initialState(), true),
+    reset: async () => {
+      try {
+        return await commit(initialState, true);
+      } catch {
+        setError("Nie udało się zresetować scenariusza. Dotychczasowy zapis pozostaje bez zmian.");
+        return false;
+      }
+    },
   };
 }
 type Store = ReturnType<typeof useStore>;

@@ -5,3 +5,7 @@ This static frontend has no trusted server or real authentication. Role-specific
 No API keys, credentials, real CVs or private material belong in frontend source, JSON, localStorage or exports. Exports include private-in-the-UI source/recruiter notes.
 
 Render imported text through React text nodes, validate imports with shared Zod schemas, reject unsupported versions, duplicate IDs, broken references and oversized files. Never overwrite an unreadable save automatically.
+
+Writes are serialized by the same-origin Web Locks API and guarded by a stored-snapshot comparison. Neither role selection nor the write lock authenticates a person. Conflicting tabs require an explicit reload; recovery copies are separate scenario exports and contain every persona/note. Browsers without safe locking do not persist edits.
+
+Local diagnostics accept only allowlisted technical codes and timestamps, are capped at 20 events in memory, and contain build identity. No messages, stacks, URLs, CVs or scenario fields enter the report. There is no automatic external telemetry or remote alert delivery.

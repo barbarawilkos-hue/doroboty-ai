@@ -19,6 +19,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { currentPerson } from "./model";
 import { usePrototype } from "./store";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { downloadText } from "./download";
+import { serializeState } from "./storage";
 const navigation = [
   { to: "/oferty", label: "Oferty" },
   { to: "/metodologia", label: "Metodologia" },
@@ -63,11 +66,13 @@ const candidateNav = [
 const employerNav = [
   ["/app", "Przegląd", LayoutDashboard],
   ["/app/oferty", "Moje oferty", BriefcaseBusiness],
-  ["/app/kandydaci", "Kandydaci", Users],
+  ["/app/kandydaci", "Zgłoszenia", Users],
   ["/app/organizacja", "Organizacja", Building2],
 ] as const;
 export function Shell() {
-  const { state, issue, error, clearError } = usePrototype();
+  const { state, issue, error, clearError, conflict, exportState, loadLatest, generation } =
+    usePrototype();
+  const [reloadPending, setReloadPending] = useState(false);
   const person = currentPerson(state);
   const { pathname } = useLocation();
   const workspace = pathname.startsWith("/app") && person;
@@ -90,6 +95,10 @@ export function Shell() {
         : candidateNav;
   const content = (
     <>
+      <aside aria-label="Wersja demonstracyjna" className="prototype-demo">
+        <strong>Demo DoRoboty.ai</strong> Używaj fikcyjnych danych i przykładowych CV. Zgłoszenia i
+        wiadomości pozostają w tej przeglądarce. <Link to="/pomoc">Jak działa demo</Link>
+      </aside>
       <>
         {issue && (
           <Notice>
@@ -97,6 +106,19 @@ export function Shell() {
             <Link className="underline" to="/app/settings">
               Ustawienia danych
             </Link>
+            {conflict && (
+              <div className="flex flex-wrap gap-3 mt-3">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    downloadText("doroboty-kopia-tej-karty.json", serializeState(exportState))
+                  }
+                >
+                  Pobierz kopię tej karty
+                </Button>
+                <Button onClick={() => setReloadPending(true)}>Wczytaj nowszy zapis</Button>
+              </div>
+            )}
           </Notice>
         )}
       </>
@@ -105,9 +127,21 @@ export function Shell() {
           {error}
         </p>
       )}
-      <div key={`${state.activePersonId}:${pathname}`}>
+      <div key={`${state.activePersonId}:${pathname}:${generation}`}>
         <Outlet />
       </div>
+      <ConfirmDialog
+        open={reloadPending}
+        onOpenChange={setReloadPending}
+        title="Wczytać nowszy zapis?"
+        description="Zastąpisz widok tej karty aktualnymi danymi. Najpierw pobierz kopię tej karty, jeśli chcesz zachować próbę zapisu. Niezapisany tekst formularza skopiuj przed kontynuowaniem."
+        label="Wczytaj zapis"
+        pending={false}
+        onConfirm={() => {
+          loadLatest();
+          setReloadPending(false);
+        }}
+      />
     </>
   );
   return (
@@ -190,7 +224,7 @@ export function Shell() {
             <div className="topbar">
               <span>
                 {person.role === "candidate"
-                  ? "Strefa kandydata"
+                  ? "Strefa szukania pracy"
                   : person.role === "employer"
                     ? "Strefa pracodawcy"
                     : "Case study"}
@@ -298,6 +332,7 @@ export function Shell() {
                 <Link to="/oferty">Oferty</Link>
                 <Link to="/metodologia">Metodologia</Link>
                 <Link to="/polityka-prywatnosci">Prywatność</Link>
+                <Link to="/pomoc">Pomoc z demo</Link>
                 <Link className="inline-flex items-center gap-1" to="/auth/sign-in">
                   Strefa case <ArrowUpRight className="size-4" />
                 </Link>

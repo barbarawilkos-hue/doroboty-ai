@@ -4,9 +4,15 @@ import { ProcessTimeline } from "@/components/process-timeline";
 import { RecordSheet } from "@/components/record-sheet";
 import { CvAttachment } from "./cv-attachment";
 import { MatchScore } from "./match-score";
+import { ContributionReadout, MissingContributionMatrix } from "./contribution-readout";
 import { stageLabels, type Application, type Stage } from "./model";
 
-type RecordEvent = { stage: Stage; at: string; note?: string };
+type RecordEvent = {
+  stage: Stage;
+  at: string;
+  note?: string;
+  decision?: Application["events"][number]["decision"];
+};
 const dateFormat = new Intl.DateTimeFormat("pl-PL", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -21,10 +27,21 @@ export function ApplicationRecord({
   statusRef,
   children,
   footer,
+  project,
+  margin,
+  showScore = true,
 }: {
   application: Pick<
     Application,
-    "candidateId" | "candidateName" | "jobTitle" | "stage" | "answer" | "cv" | "score" | "summary"
+    | "candidateId"
+    | "candidateName"
+    | "jobTitle"
+    | "stage"
+    | "answer"
+    | "cv"
+    | "score"
+    | "summary"
+    | "projects"
   >;
   companyName: string;
   audience: "candidate" | "employer";
@@ -32,6 +49,9 @@ export function ApplicationRecord({
   statusRef?: Ref<HTMLSpanElement>;
   children?: ReactNode;
   footer?: ReactNode;
+  project?: { placement: "section" | "tab"; content: ReactNode };
+  margin?: ReactNode;
+  showScore?: boolean;
 }) {
   const candidate = audience === "candidate";
   const title = candidate ? application.jobTitle : application.candidateName;
@@ -42,7 +62,7 @@ export function ApplicationRecord({
       <header className="recruiting-header">
         <nav aria-label="Ścieżka nawigacji" className="record-breadcrumb">
           <BackLink to={candidate ? "/app/aplikacje" : "/app/kandydaci"}>
-            {candidate ? "Moje aplikacje" : "Kandydaci"}
+            {candidate ? "Moje aplikacje" : "Zgłoszenia"}
           </BackLink>
           <span aria-hidden="true">/</span>
           <span aria-current="page">{title}</span>
@@ -55,7 +75,7 @@ export function ApplicationRecord({
           <span className="record-stage" tabIndex={-1} ref={statusRef}>
             {stageLabels[application.stage]}
           </span>
-          <MatchScore score={application.score} />
+          {showScore && <MatchScore score={application.score} />}
           {submitted && (
             <span>
               Złożona:{" "}
@@ -66,18 +86,37 @@ export function ApplicationRecord({
       </header>
       <div className="recruiting-layout">
         <RecordSheet
-          label={candidate ? "Twoja wysłana aplikacja" : "Materiały kandydata"}
+          key={project?.placement ?? "standard"}
+          label={candidate ? "Twoja wysłana aplikacja" : "Materiały zgłoszenia"}
+          intro={
+            project ? (
+              project.placement === "section" ? (
+                project.content
+              ) : undefined
+            ) : application.projects ? (
+              <ContributionReadout projects={application.projects} />
+            ) : !candidate ? (
+              <MissingContributionMatrix />
+            ) : undefined
+          }
           sections={[
-            {
-              value: "answer",
-              label: "Odpowiedź",
-              content: (
-                <>
-                  <h3>Przesłana aplikacja</h3>
-                  <p>{application.answer}</p>
-                </>
-              ),
-            },
+            ...(project?.placement === "tab"
+              ? [{ value: "project", label: "Projekt i luki", content: project.content }]
+              : []),
+            ...(!application.projects
+              ? [
+                  {
+                    value: "answer",
+                    label: "Odpowiedź",
+                    content: (
+                      <>
+                        <h3>Przesłana aplikacja</h3>
+                        <p>{application.answer}</p>
+                      </>
+                    ),
+                  },
+                ]
+              : []),
             {
               value: "cv",
               label: "CV",
@@ -98,22 +137,29 @@ export function ApplicationRecord({
         >
           {children}
         </RecordSheet>
-        <aside className="recruiting-margin" aria-label="Historia i podsumowanie">
-          <section aria-labelledby="process-heading">
-            <h2 id="process-heading">Historia procesu</h2>
-            <ProcessTimeline
-              items={history.map((event, index) => ({
-                id: `${index}-${event.at}`,
-                title: stageLabels[event.stage],
-                dateTime: event.at,
-                content: event.note || undefined,
-              }))}
-            />
-          </section>
-          <section className="record-summary" aria-labelledby="summary-heading">
-            <h2 id="summary-heading">Podsumowanie</h2>
-            <p>{application.summary}</p>
-          </section>
+        <aside
+          className="recruiting-margin"
+          aria-label={margin ? "Kontekst rekrutacji" : "Historia i podsumowanie"}
+        >
+          {margin ?? (
+            <>
+              <section aria-labelledby="process-heading">
+                <h2 id="process-heading">Historia procesu</h2>
+                <ProcessTimeline
+                  items={history.map((event, index) => ({
+                    id: `${index}-${event.at}`,
+                    title: event.decision === "clarify" ? "Dopytanie" : stageLabels[event.stage],
+                    dateTime: event.at,
+                    content: event.note || undefined,
+                  }))}
+                />
+              </section>
+              <section className="record-summary" aria-labelledby="summary-heading">
+                <h2 id="summary-heading">Podsumowanie</h2>
+                <p>{application.summary}</p>
+              </section>
+            </>
+          )}
         </aside>
       </div>
     </article>

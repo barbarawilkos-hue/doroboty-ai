@@ -7,3 +7,9 @@ artifacts
 
 # Preserve the versioned reference byte-for-byte; checked by its own scripts.
 docs/design-system/agent-kit/
+
+# Generated offline audit report; maintained by the readiness renderer.
+docs/production-readiness.html
+
+# Preserve the upstream MIT stylesheet; attribution is beside it.
+src/app/vendor/shadcn-tailwind.css

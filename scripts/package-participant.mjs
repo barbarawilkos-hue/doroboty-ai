@@ -43,12 +43,14 @@ const entries = [
   "README.md",
   "scripts/bootstrap",
   "scripts/verify",
+  "scripts/prepare-release.py",
   "scripts/package-participant.mjs",
   "scripts/verify-participant.mjs",
   "docs/architecture.md",
   "docs/design-system",
   "docs/PARTICIPANT_GUIDE.md",
   "docs/SECURITY.md",
+  "docs/RELEASE.md",
   "docs/case",
 ];
 fs.mkdirSync(target, { recursive: true });

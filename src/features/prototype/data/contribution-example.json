@@ -1,0 +1,47 @@
+{
+  "title": "Asystent wyszukiwania w bazie wiedzy",
+  "goal": "Skrócenie szukania odpowiedzi w instrukcjach zespołu obsługi.",
+  "result": "W pilotażu sprawdziliśmy 40 pytań. 32 odpowiedzi zawierały poprawne źródło. Nie mierzyliśmy jeszcze czasu obsługi.",
+  "own": {
+    "status": "described",
+    "entries": [
+      {
+        "task": "metrics",
+        "detail": "Dobrałam 40 pytań z najczęstszych zgłoszeń i zdefiniowałam poprawną odpowiedź jako zgodną z instrukcją oraz zawierającą źródło.",
+        "owner": ""
+      },
+      {
+        "task": "tradeoffs",
+        "detail": "Wybrałam krótsze fragmenty dokumentów po porównaniu dwóch wariantów. Zaakceptowałam więcej odwołań do źródeł zamiast dłuższego kontekstu.",
+        "owner": ""
+      }
+    ]
+  },
+  "team": {
+    "status": "described",
+    "entries": [
+      {
+        "task": "data",
+        "owner": "Inżynieria danych",
+        "detail": "Zespół przygotował import i czyszczenie instrukcji oraz aktualizację indeksu po zmianie dokumentu."
+      },
+      {
+        "task": "infrastructure",
+        "owner": "DevOps",
+        "detail": "DevOps przygotował środowisko pilotażowe i monitorowanie błędów integracji."
+      }
+    ]
+  },
+  "ai": {
+    "status": "described",
+    "entries": [
+      {
+        "task": "synthetic",
+        "detail": "Model przygotował warianty pytań do testów. Ręcznie wybrałam pytania i sprawdziłam oczekiwane odpowiedzi w dokumentach.",
+        "owner": ""
+      }
+    ],
+    "tools": "Model językowy w firmowym narzędziu; nazwa wersji nie była dostępna.",
+    "method": "Zero-shot prompting do wariantów pytań. System docelowy korzystał z RAG. Nie znam ustawienia temperatury."
+  }
+}
