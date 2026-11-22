@@ -37,7 +37,24 @@ export function structuralElements(elements: unknown, chain: unknown) {
 }
 
 // Keep styling and icon geometry, but never record DOM labels, values, IDs or destinations.
-export function maskReplayAttribute(name: string, value: string): string {
+export function maskReplayAttribute(name: string, value: string, element?: Element): string {
+  if (name === "_cssText") {
+    // rrweb inlines the public build stylesheet in this generated attribute.
+    // Other elements/stylesheets may contain user content, so fail closed.
+    if (element?.tagName !== "LINK" || element.getAttribute("rel") !== "stylesheet") return "";
+    try {
+      const url = new URL(element.getAttribute("href") || "", element.ownerDocument.URL);
+      const page = new URL(element.ownerDocument.URL);
+      return url.origin === page.origin &&
+        /^\/assets\/[\w-]+\.css$/.test(url.pathname) &&
+        !url.search &&
+        !url.hash
+        ? value
+        : "";
+    } catch {
+      return "";
+    }
+  }
   if (name === "style") return /url\s*\(|content\s*:/i.test(value) ? "" : value;
   return [
     "class",
@@ -51,6 +68,15 @@ export function maskReplayAttribute(name: string, value: string): string {
     "stroke-width",
     "type",
     "role",
+    "rr_width",
+    "rr_height",
+    "rr_left",
+    "rr_top",
+    "rr_position",
+    "rr_transform",
+    "rr_display",
+    "rr_scrollLeft",
+    "rr_scrollTop",
   ].includes(name)
     ? value
     : "";

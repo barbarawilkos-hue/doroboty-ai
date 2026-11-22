@@ -138,6 +138,23 @@ test("replay DOM attributes retain layout but exclude private labels, links and 
   expect(maskReplayAttribute("style", "background-image:url(private.png)")).toBe("");
   expect(maskReplayAttribute("style", "content: 'private' ")).toBe("");
   expect(maskReplayAttribute("class", "pp-category-tab")).toBe("pp-category-tab");
+  expect(maskReplayAttribute("rr_width", "200px")).toBe("200px");
+  const stylesheet = (href: string) =>
+    ({
+      tagName: "LINK",
+      getAttribute: (name: string) => (name === "rel" ? "stylesheet" : href),
+      ownerDocument: { URL: "https://example.com/#/oferty" },
+    }) as unknown as Element;
+  const css = ".pp-category-tab { display: grid; }";
+  expect(maskReplayAttribute("_cssText", css, stylesheet("/assets/index-abc.css"))).toBe(css);
+  for (const href of [
+    "https://other.example/assets/index-abc.css",
+    "/assets/index-abc.css?private=value",
+    "/uploads/private.css",
+  ]) {
+    expect(maskReplayAttribute("_cssText", css, stylesheet(href))).toBe("");
+  }
+  expect(maskReplayAttribute("_cssText", "private")).toBe("");
 });
 
 test("masked replay data survives before-send while unrelated properties do not", () => {
