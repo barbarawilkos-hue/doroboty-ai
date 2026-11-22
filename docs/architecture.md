@@ -27,3 +27,14 @@ npm run check and ./scripts/verify run formatting, design-system reference integ
 ## Diagnostic and release identity
 
 The app collects at most 20 technical codes/times in tab memory, with app version and a source-derived build ID. It does not collect messages, stacks, URLs, scenario content or person identifiers and does not send telemetry. Help and the render-error fallback offer an explicit technical download. Vite emits release.json, and release:prepare archives only dist with file hashes. See RELEASE.md for smoke, recovery and rollback procedures.
+
+## Optional browser analytics
+
+`src/features/analytics/` lazily loads posthog-js only when VITE_POSTHOG_PROJECT_TOKEN is
+configured. AnalyticsPageviews observes HashRouter pathnames; effect cleanup prevents
+duplicate StrictMode captures and stale captures after an asynchronous load. Autocapture
+is restricted to button/link clicks. Before-send allowlisting keeps only basic SDK metadata,
+normalized routes and structural element positions. DOM text/attributes, search queries,
+record identifiers and person properties are excluded. EU ingestion, memory-only anonymous
+IDs and disabled replay/profiles keep analytics separate from the browser-local scenario
+and local diagnostic reports. A missing or blocked SDK does not prevent rendering.

@@ -39,3 +39,18 @@ npm run preview
 The static output is dist/. Browser checks require an already provisioned Playwright Chromium; starting the app never installs it. See [participant guide](docs/PARTICIPANT_GUIDE.md), [architecture](docs/architecture.md), [current features](FEATURES.md) and [case protocol](docs/case/CASE_PROTOCOL.md).
 
 To distribute a baseline participant package, run npm run package:participant -- /absolute/output/directory. This excludes Git history and instructor source material. Never distribute this repository’s history as a stage-safe packet.
+
+## Optional PostHog analytics
+
+The published exercise demo can send pageviews and button/link clicks to EU PostHog.
+An unconfigured checkout makes no analytics requests. For an intentional analytics build,
+set `VITE_POSTHOG_PROJECT_TOKEN` to the public, write-only project token in the hosting
+provider's production environment, then rebuild/redeploy. The EU ingestion host is set
+in `src/features/analytics/analytics.ts`. Local development can use `.env.local`;
+`.env.example` contains an empty placeholder. Keep the variable unset for the offline test suite.
+
+The integration masks DOM content/attributes and sends normalized route templates rather
+than search text, record IDs, CVs or scenario data. It uses random identifiers in memory
+only, with session replay and person profiles disabled. To verify a deployment, open its
+public URL, navigate through a link and inspect `$pageview` and `$autocapture` events in
+PostHog Activity. Match the event's host to the deployed domain.

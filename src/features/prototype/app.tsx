@@ -20,6 +20,7 @@ import { SettingsPage, PrivacyPage } from "./settings";
 import { CasePage } from "./case";
 import { ProjectCardPreview } from "./project-card-preview";
 import { HelpPage } from "./help";
+import { AnalyticsPageviews } from "../analytics/pageviews";
 function AppRoutes() {
   return (
     <Routes>
@@ -157,6 +158,7 @@ export function App() {
   return (
     <PrototypeProvider>
       <HashRouter>
+        <AnalyticsPageviews />
         <AppRoutes />
       </HashRouter>
     </PrototypeProvider>
