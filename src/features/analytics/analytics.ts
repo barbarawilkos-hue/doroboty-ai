@@ -1,5 +1,11 @@
 import { matchPath } from "react-router";
 import type { CaptureResult, PostHog, PostHogConfig } from "posthog-js";
+import {
+  maskReplayAttribute,
+  maskReplayRequest,
+  privateElements,
+  structuralElements,
+} from "./privacy";
 
 const routes = [
   "/",
@@ -35,10 +41,29 @@ export function analyticsRoute(hash: string): string {
   return routes.find((route) => matchPath({ path: route, end: true }, pathname)) ?? "/unknown";
 }
 
+export function isPublicAnalyticsRoute(hash: string): boolean {
+  return [
+    "/",
+    "/oferty",
+    "/oferty/:slug",
+    "/firmy/:slug",
+    "/metodologia",
+    "/polityka-prywatnosci",
+    "/pomoc",
+  ].includes(analyticsRoute(hash));
+}
+
+export function analyticsUrl(href: string): string {
+  const url = new URL(href);
+  const route = isPublicAnalyticsRoute(url.hash) ? analyticsRoute(url.hash) : "/private";
+  return `${url.origin}/#${route}`;
+}
+
 // Rebuild the payload from a small allowlist, even if SDK defaults change later.
 export function sanitizeAnalyticsEvent(event: CaptureResult, href: string): CaptureResult | null {
-  if (event.event !== "$pageview" && event.event !== "$autocapture") return null;
+  if (!["$pageview", "$autocapture", "$snapshot"].includes(event.event)) return null;
   const url = new URL(href);
+  if (!isPublicAnalyticsRoute(url.hash)) return null;
   const route = analyticsRoute(url.hash);
   const properties: CaptureResult["properties"] = {};
   for (const key of [
@@ -61,6 +86,12 @@ export function sanitizeAnalyticsEvent(event: CaptureResult, href: string): Capt
   ]) {
     if (event.properties[key] !== undefined) properties[key] = event.properties[key];
   }
+  if (event.event === "$snapshot") {
+    // rrweb masks/blocks content before compression; retain its already-masked payload.
+    for (const key of ["$snapshot_data", "$snapshot_bytes", "$snapshot_host"]) {
+      if (event.properties[key] !== undefined) properties[key] = event.properties[key];
+    }
+  }
   Object.assign(properties, {
     $current_url: `${url.origin}/#${route}`,
     $pathname: route,
@@ -72,12 +103,16 @@ export function sanitizeAnalyticsEvent(event: CaptureResult, href: string): Capt
   if (event.event === "$autocapture") {
     if (event.properties.$event_type !== "click") return null;
     properties.$event_type = "click";
-    properties.$elements = (event.properties.$elements ?? []).map(
-      (element: Record<string, unknown>) => ({
-        tag_name: element.tag_name,
-        nth_child: element.nth_child,
-        nth_of_type: element.nth_of_type,
-      }),
+    if (
+      ["category_all", "category_build", "category_apply", "category_lead"].includes(
+        event.properties.action,
+      )
+    ) {
+      properties.action = event.properties.action;
+    }
+    properties.$elements = structuralElements(
+      event.properties.$elements,
+      event.properties.$elements_chain,
     );
   }
   return { uuid: event.uuid, event: event.event, timestamp: event.timestamp, properties };
@@ -87,7 +122,11 @@ export const analyticsOptions: Partial<PostHogConfig> = {
   api_host: "https://eu.i.posthog.com",
   ui_host: "https://eu.posthog.com",
   defaults: "2026-08-30",
-  autocapture: { dom_event_allowlist: ["click"], element_allowlist: ["a", "button"] },
+  autocapture: {
+    dom_event_allowlist: ["click"],
+    element_allowlist: ["a", "button"],
+    css_selector_ignorelist: [privateElements, ".ph-no-autocapture", "[data-ph-no-autocapture]"],
+  },
   capture_pageview: false,
   capture_pageleave: false,
   capture_dead_clicks: false,
@@ -96,9 +135,20 @@ export const analyticsOptions: Partial<PostHogConfig> = {
   capture_performance: false,
   rageclick: false,
   disable_session_recording: true,
+  session_recording: {
+    blockSelector: privateElements,
+    maskAllInputs: true,
+    maskTextSelector: "*",
+    maskAttributeFn: maskReplayAttribute,
+    maskCapturedNetworkRequestFn: (request) => maskReplayRequest(request, analyticsUrl),
+    recordHeaders: false,
+    recordBody: false,
+    recordCrossOriginIframes: false,
+    captureJsonLd: false,
+  },
+  enable_recording_console_log: false,
   disable_surveys: true,
-  disable_external_dependency_loading: true,
-  advanced_disable_flags: true,
+  advanced_disable_feature_flags: true,
   person_profiles: "never",
   persistence: "memory",
   disable_persistence: true,
@@ -106,6 +156,8 @@ export const analyticsOptions: Partial<PostHogConfig> = {
   save_campaign_params: false,
   mask_all_text: true,
   mask_all_element_attributes: true,
+  // The replay URL callback redacts queries and IDs while preserving hash-route context.
+  disable_capture_url_hashes: false,
   ip: false,
   before_send: (event) => sanitizeAnalyticsEvent(event, window.location.href),
 };

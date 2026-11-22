@@ -222,6 +222,7 @@ export function JobsPage() {
             ).map(([key, label, description]) => (
               <button
                 key={key}
+                data-ph-capture-attribute-action={`category_${key || "all"}`}
                 className={cn("pp-category-tab", (filters.category ?? "") === key && "pp-selected")}
                 aria-pressed={(filters.category ?? "") === key}
                 onClick={() => change("category", key)}
