@@ -1,6 +1,13 @@
 import { afterEach, expect, test, vi } from "vitest";
 import type { CaptureResult } from "posthog-js";
-import { analyticsClient, analyticsRoute, sanitizeAnalyticsEvent } from "./analytics";
+import {
+  analyticsClient,
+  analyticsRoute,
+  analyticsUrl,
+  isPublicAnalyticsRoute,
+  sanitizeAnalyticsEvent,
+} from "./analytics";
+import { maskReplayAttribute, maskReplayRequest, structuralElements } from "./privacy";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -67,4 +74,118 @@ test("pageviews survive while non-click and unrelated event types are dropped", 
       "https://example.com",
     ),
   ).toBeNull();
+});
+
+test("private and unknown routes drop clicks, pageviews and buffered replay payloads", () => {
+  for (const hash of [
+    "#/app",
+    "#/app/profil",
+    "#/app/kandydaci/private-id",
+    "#/auth/sign-in",
+    "#/aplikuj/private-job",
+    "#/unknown/private-data",
+  ]) {
+    expect(isPublicAnalyticsRoute(hash)).toBe(false);
+    for (const event of ["$pageview", "$autocapture", "$snapshot"]) {
+      expect(
+        sanitizeAnalyticsEvent(
+          { uuid: "test", event, properties: { $event_type: "click" } },
+          `https://example.com/${hash}`,
+        ),
+      ).toBeNull();
+    }
+  }
+  expect(isPublicAnalyticsRoute("#/oferty?query=private")).toBe(true);
+});
+
+test("replay URLs remove queries and dynamic values; network content is rejected", () => {
+  expect(analyticsUrl("https://example.com/?email=private#/oferty/private-job?query=private")).toBe(
+    "https://example.com/#/oferty/:slug",
+  );
+  expect(analyticsUrl("https://example.com/#/app/profil?name=private")).toBe(
+    "https://example.com/#/private",
+  );
+  expect(
+    maskReplayRequest(
+      {
+        name: "https://example.com/?private=value#/oferty",
+        duration: 0,
+        entryType: "navigation",
+        startTime: 0,
+      },
+      analyticsUrl,
+    )?.name,
+  ).toBe("https://example.com/#/oferty");
+  expect(
+    maskReplayRequest(
+      {
+        name: "https://example.com/api",
+        method: "POST",
+        requestBody: "private",
+        duration: 0,
+        entryType: "resource",
+        startTime: 0,
+      },
+      analyticsUrl,
+    ),
+  ).toBeNull();
+});
+
+test("replay DOM attributes retain layout but exclude private labels, links and CSS content", () => {
+  for (const name of ["title", "aria-label", "value", "id", "src", "href", "data-private"]) {
+    expect(maskReplayAttribute(name, "private@example.com")).toBe("");
+  }
+  expect(maskReplayAttribute("style", "background-image:url(private.png)")).toBe("");
+  expect(maskReplayAttribute("style", "content: 'private' ")).toBe("");
+  expect(maskReplayAttribute("class", "pp-category-tab")).toBe("pp-category-tab");
+});
+
+test("masked replay data survives before-send while unrelated properties do not", () => {
+  const payload = [{ type: 2, data: { masked: true } }];
+  const result = sanitizeAnalyticsEvent(
+    {
+      uuid: "test",
+      event: "$snapshot",
+      properties: {
+        $snapshot_data: payload,
+        $snapshot_bytes: 50,
+        $session_id: "random-session",
+        private: "private",
+      },
+    },
+    "https://example.com/#/oferty",
+  );
+  expect(result?.properties.$snapshot_data).toBe(payload);
+  expect(result?.properties.$session_id).toBe("random-session");
+  expect(result?.properties.private).toBeUndefined();
+});
+
+test("Autocapture keeps only predefined public action names", () => {
+  const event = {
+    uuid: "test",
+    event: "$autocapture",
+    properties: { $event_type: "click", action: "category_build" },
+  };
+  expect(sanitizeAnalyticsEvent(event, "https://example.com/#/oferty")?.properties.action).toBe(
+    "category_build",
+  );
+  event.properties.action = "private@example.com";
+  expect(
+    sanitizeAnalyticsEvent(event, "https://example.com/#/oferty")?.properties.action,
+  ).toBeUndefined();
+});
+
+test("compact Autocapture chains retain positions but reject text and attributes", () => {
+  expect(
+    structuralElements(
+      undefined,
+      'button:nth-child="2"nth-of-type="1";div:nth-child="1"nth-of-type="1"',
+    ),
+  ).toEqual([
+    { tag_name: "button", nth_child: 2, nth_of_type: 1 },
+    { tag_name: "div", nth_child: 1, nth_of_type: 1 },
+  ]);
+  expect(
+    structuralElements(undefined, 'button:nth-child="2"nth-of-type="1"text="private"'),
+  ).toEqual([]);
 });

@@ -42,15 +42,23 @@ To distribute a baseline participant package, run npm run package:participant --
 
 ## Optional PostHog analytics
 
-The published exercise demo can send pageviews and button/link clicks to EU PostHog.
+The published exercise demo can send public pageviews, automatic button/link clicks and masked session replay to EU PostHog.
 An unconfigured checkout makes no analytics requests. For an intentional analytics build,
 set `VITE_POSTHOG_PROJECT_TOKEN` to the public, write-only project token in the hosting
 provider's production environment, then rebuild/redeploy. The EU ingestion host is set
 in `src/features/analytics/analytics.ts`. Local development can use `.env.local`;
 `.env.example` contains an empty placeholder. Keep the variable unset for the offline test suite.
 
-The integration masks DOM content/attributes and sends normalized route templates rather
-than search text, record IDs, CVs or scenario data. It uses random identifiers in memory
-only, with session replay and person profiles disabled. To verify a deployment, open its
+Private and unknown routes are excluded. The integration blocks private DOM areas, forms,
+images and documents, masks text/input values/attributes, and redacts URL queries and record
+IDs. Replay pauses in the workspace, persona picker and application forms. Console and
+network/body/header/canvas capture and person profiles are disabled. Identifiers use memory only. To verify a deployment, open its
 public URL, navigate through a link and inspect `$pageview` and `$autocapture` events in
 PostHog Activity. Match the event's host to the deployed domain.
+
+Simple Autocapture test: open `/#/oferty` and click **Build / Twórz AI**. In PostHog Activity,
+inspect the `$autocapture` event with `action = category_build`. This is automatic capture
+with a fixed public data attribute, not a separate capture call. Session recordings are
+available in Session replay after processing. Project settings must enable Autocapture and
+Record user sessions. Use Total privacy masking, disable console/network capture, and add
+`https?://[^/]+/[^#]*#/(?:app|auth|aplikuj)(?:[/?#].*)?` to the replay URL blocklist.

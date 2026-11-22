@@ -34,7 +34,11 @@ The app collects at most 20 technical codes/times in tab memory, with app versio
 configured. AnalyticsPageviews observes HashRouter pathnames; effect cleanup prevents
 duplicate StrictMode captures and stale captures after an asynchronous load. Autocapture
 is restricted to button/link clicks. Before-send allowlisting keeps only basic SDK metadata,
-normalized routes and structural element positions. DOM text/attributes, search queries,
-record identifiers and person properties are excluded. EU ingestion, memory-only anonymous
-IDs and disabled replay/profiles keep analytics separate from the browser-local scenario
-and local diagnostic reports. A missing or blocked SDK does not prevent rendering.
+normalized public routes, structural element positions and fixed public action names. DOM
+text/attributes, search queries, record identifiers and person properties are excluded.
+A synchronous private DOM marker blocks sensitive route subtrees; layout-effect cleanup
+pauses recording during navigation and private routes reject all analytics payloads.
+Session replay uses text/input/attribute/URL masking and blocks forms, images and documents.
+Console, network, header/body and canvas capture stay disabled in source and project settings.
+EU ingestion, memory-only anonymous IDs and disabled person profiles keep analytics separate
+from the browser-local scenario and local diagnostic reports. A missing or blocked SDK does not prevent rendering.

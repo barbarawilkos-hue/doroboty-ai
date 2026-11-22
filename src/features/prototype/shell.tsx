@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { downloadText } from "./download";
 import { serializeState } from "./storage";
+import { isPublicAnalyticsRoute } from "../analytics/analytics";
 const navigation = [
   { to: "/oferty", label: "Oferty" },
   { to: "/metodologia", label: "Metodologia" },
@@ -145,7 +146,10 @@ export function Shell() {
     </>
   );
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div
+      className="min-h-dvh bg-background text-foreground"
+      data-analytics-private={!isPublicAnalyticsRoute(pathname) ? "" : undefined}
+    >
       <a
         href="#main"
         className="skip-link"
@@ -259,7 +263,10 @@ export function Shell() {
                   </Link>
                 ))}
                 {person ? (
-                  <div className="flex items-center gap-[var(--gui-space-xs)] sm:gap-[var(--gui-space-m)]">
+                  <div
+                    data-analytics-private=""
+                    className="flex items-center gap-[var(--gui-space-xs)] sm:gap-[var(--gui-space-m)]"
+                  >
                     {person.role === "candidate" && (
                       <>
                         <Link
