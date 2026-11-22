@@ -36,3 +36,11 @@ The user is being guided through the dashboard one step at a time. Final publica
 ## GitHub Actions activation
 
 The user enabled Actions for the fork on 2026-11-22. The repository's Actions page showed `Actions Enabled.` and no workflow runs yet. The audited application changes and Vercel settings were already present on `main` in commit `a13304370c6a3d7ca23a3b10d358a97789188542`; GitHub had suppressed that push's workflow because Actions was disabled for the fork. This documentation-only follow-up starts the existing push-to-main workflow after activation. Browser test results remain pending until that run completes.
+
+## Portable dependency downloads
+
+The first enabled Actions run (`45040316539`, commit `b3030397adbb39c8169db03f2ecff82b71f19289`) failed during `npm ci`, before application checks. Two lockfile download URLs referenced a corporate package mirror that GitHub could not reach. Replace only those URLs with the public npm registry URLs for the same package versions. Acceptance requires unchanged package versions and integrity values, a clean install using the public registry, and a new CI result. Public registry metadata and downloaded tarball SHA-512 hashes were verified against the existing lockfile integrity values before this change. This has no product behavior impact; the behavior register needs no update.
+
+The user confirmed on 2026-11-22 that the public deployment is a practice demo using synthetic data only. Other publication decisions remain to be resolved step by step before deployment.
+
+The URL-only comparison passed: exactly two `resolved` values changed, with all versions, integrity values and other lockfile metadata preserved. A clean `npm ci` using Node.js 24.21.0 and the public registry succeeded in an isolated scratch directory (238 packages installed, zero vulnerabilities reported). Formatting checks passed for both changed files. The running application's installed dependencies were preserved. The full CI gate remains pending for the follow-up commit; the failed earlier run is not application-test evidence.
